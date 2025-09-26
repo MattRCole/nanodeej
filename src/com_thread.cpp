@@ -273,10 +273,18 @@ void ComThread::handleEvents() {
         eventDoc.clear();
         // Map current_pos to dial/list depending on active mode
         if (currentMode == MODE_VOLUME) {
-          uint16_t v = angleEvt.cur_pos;
-          if (v!=lastDialSent) { lastDialSent = v; sendDial(v); }
+          uint16_t stepIndex = angleEvt.cur_pos;
+          // Map step index to value; guard against overflow
+          uint32_t raw = (uint32_t)dialMin + (uint32_t)stepIndex * (uint32_t)max<uint16_t>(dialStep, 1);
+          uint16_t value = (raw > dialMax) ? dialMax : (uint16_t)raw;
+          if (value!=lastDialSent) { lastDialSent = value; sendDial(value); }
         } else if (currentMode == MODE_OUTPUT || currentMode == MODE_INPUT || currentMode == MODE_WILDCARD) {
           uint16_t idx = angleEvt.cur_pos;
+          if (listCount>0) {
+            if (idx >= listCount) idx = listCount - 1;
+          } else {
+            idx = 0;
+          }
           if (idx!=lastIndexSent) { lastIndexSent = idx; sendSelectIndex(idx); }
         } else {
           eventDoc["p"] = angleEvt.cur_pos;
