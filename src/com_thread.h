@@ -6,6 +6,7 @@
 #include <MIDI.h>
 #include <ArduinoJSON.h>
 #include "HapticProfileManager.h"
+#include "transport.h"
 
 
 enum StringMessageType {
@@ -48,6 +49,35 @@ class ComThread : public Thread<ComThread> {
         void handleMessages();
         void handleEvents();
 
+        // Mode/state and chord handling
+        enum DeviceMode { MODE_VOLUME, MODE_OUTPUT, MODE_INPUT, MODE_WILDCARD };
+        DeviceMode currentMode = MODE_VOLUME;
+        void sendModeEnter(DeviceMode m);
+        void sendMuteToggle();
+        void sendVolumeSlot(uint8_t slot);
+        void sendDial(uint16_t value);
+        const char* modeName(DeviceMode m);
+
+        // chord detection
+        uint8_t pressedMask = 0;             // bit i set when key i is pressed
+        uint32_t chordWindowMs = 200;        // window to accept a chord
+        uint32_t chordLockoutMs = 500;       // prevent immediate repeats
+        uint32_t chordStartMs = 0;           // first press time in a sequence
+        uint32_t chordLastFireMs = 0;        // last time a chord fired
+        bool pendingSingle = false;          // waiting to resolve single vs chord
+        uint8_t pendingKey = 0xFF;           // candidate single key
+        void tryResolveChordOrSingle(uint32_t nowMs);
+
+        // Dial/list state provided by host
+        uint16_t dialMin = 0;
+        uint16_t dialMax = 100;
+        uint16_t dialStep = 1;
+        uint16_t dialValue = 0;
+        uint16_t listCount = 0;
+        uint16_t listIndex = 0;
+        void applyDialHaptics();
+        void applyListHaptics();
+
         void dispatchLedConfig();
         void dispatchHapticConfig();
         void dispatchHmiConfig();
@@ -63,6 +93,10 @@ class ComThread : public Thread<ComThread> {
         void sendError(const char* error, const char* msg = nullptr);
 
         QueueHandle_t _q_strings_in;
+
+        // Transport abstraction (defaults to CDC Serial)
+        IMessageTransport* transport = nullptr;
+        CdcSerialTransport cdcTransport;
 };
 
 

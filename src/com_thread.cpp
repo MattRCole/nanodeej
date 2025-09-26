@@ -32,8 +32,10 @@ String data3 = "";
 String data4 = "";
 
 void ComThread::run() {
-    // serial is initialized in main.cpp, but subsequently used only here
-    Serial.println("COM thread started");
+    // Initialize transport (CDC by default)
+    transport = &cdcTransport;
+    transport->begin();
+    transport->sendRaw("COM thread started");
     unsigned long ts = millis();
     ts_last_activity = ts;
     JsonDocument idleDoc;
@@ -46,10 +48,20 @@ void ComThread::run() {
     remoteLcdCommand.data4 = &data4;
     dispatchSettings();
     dispatchLcdConfig();
+    // Send hello for host discovery
+    {
+        JsonDocument hello;
+        JsonObject h = hello["hello"].to<JsonObject>();
+        h["version"] = "1.0";
+        JsonArray ts = h["transports"].to<JsonArray>();
+        ts.add("cdc");
+        h["product"] = "Nano_D++";
+        transport->sendJson(hello);
+    }
     while (true) {
         JsonDocument doc;
-        if (Serial.available()) {
-            String input = Serial.readStringUntil('\n');
+        String input;
+        if (transport->receive(input)) {
             DeserializationError error = deserializeJson(doc, input);
             if (error) {
                 doc.clear();
@@ -62,6 +74,46 @@ void ComThread::run() {
             JsonVariant v = doc["updates"];
             if (profile.is<String>() || v!=nullptr) { // haptic command
               handleProfileCommand(profile, v);
+            }
+            // host UI/dial updates for new app
+            v = doc["ui"];
+            if (v.is<JsonObject>()) {
+              JsonObject ui = v.as<JsonObject>();
+              if (ui["mode"].is<const char*>()) {
+                const char* m = ui["mode"];
+                if (strcmp(m, "volume")==0) sendModeEnter(MODE_VOLUME);
+                else if (strcmp(m, "output")==0) sendModeEnter(MODE_OUTPUT);
+                else if (strcmp(m, "input")==0) sendModeEnter(MODE_INPUT);
+                else if (strcmp(m, "wildcard")==0) sendModeEnter(MODE_WILDCARD);
+              }
+              if (ui["value"].is<uint16_t>()) {
+                dialValue = ui["value"].as<uint16_t>();
+                sendDial(dialValue);
+              }
+            }
+            v = doc["dial"];
+            if (v.is<JsonObject>()) {
+              JsonObject d = v.as<JsonObject>();
+              if (d["range"].is<JsonObject>()) {
+                JsonObject r = d["range"].as<JsonObject>();
+                if (r["min"].is<uint16_t>()) dialMin = r["min"].as<uint16_t>();
+                if (r["max"].is<uint16_t>()) dialMax = r["max"].as<uint16_t>();
+                if (r["step"].is<uint16_t>()) dialStep = r["step"].as<uint16_t>();
+                applyDialHaptics();
+              }
+              if (d["value"].is<uint16_t>()) {
+                dialValue = d["value"].as<uint16_t>();
+              }
+            }
+            v = doc["list"];
+            if (v.is<JsonObject>()) {
+              JsonObject l = v.as<JsonObject>();
+              if (l["items"].is<JsonArray>()) {
+                JsonArray items = l["items"].as<JsonArray>();
+                listCount = items.size();
+                applyListHaptics();
+              }
+              if (l["index"].is<uint16_t>()) listIndex = l["index"].as<uint16_t>();
             }
             if (doc["current"]!=nullptr) { // set current profile
               setCurrentProfile(doc["current"].as<String>());
@@ -110,8 +162,7 @@ void ComThread::run() {
                 DeviceSettings::getInstance().storeCurrentProfile(HapticProfileManager::getInstance().getCurrentProfile()->profile_name);
                 JsonDocument reply;
                 reply["saved"] = true;
-                serializeJson(reply, Serial);
-                Serial.println(); // add a newline
+                transport->sendJson(reply);
               }
             }
             if (doc["load"]) { // load settings and profiles from SPIFFS
@@ -148,8 +199,7 @@ void ComThread::run() {
         if (now-ts>1000 && now-ts_last_activity>global_idle_timeout && global_idle_timeout>0) {
           ts = now;          
           idleDoc["idle"] = now-ts_last_activity;
-          serializeJson(idleDoc, Serial);
-          Serial.println(); // add a newline
+          transport->sendJson(idleDoc);
         }
         if (now-ts_last_activity<=global_idle_timeout || global_idle_timeout==0)
           global_sleep_flag = false;
@@ -172,14 +222,25 @@ void ComThread::handleEvents() {
       KeyEvt keyEvt;
       hadEvent = hmi_thread.get_key_event(&keyEvt);
       if (hadEvent) {
+        // Maintain pressed mask and chord timing
+        uint32_t nowMs = millis();
+        if (keyEvt.type==0) { // pressed
+          pressedMask |= (1 << keyEvt.keyNum);
+          if (chordStartMs==0) {
+            chordStartMs = nowMs;
+            pendingSingle = true;
+            pendingKey = keyEvt.keyNum;
+          }
+        } else if (keyEvt.type==1) { // released
+          pressedMask &= ~(1 << keyEvt.keyNum);
+        }
+        // Emit raw event for compatibility
         eventDoc.clear();
         eventDoc["ks"] = keyEvt.keyState;
-        if (keyEvt.type==0) // AceButton::kEventPressed
-          eventDoc["kd"] = keyEvt.keyNum;
-        else if (keyEvt.type==1) // AceButton::kEventReleased
-          eventDoc["ku"] = keyEvt.keyNum;
-        serializeJson(eventDoc, Serial);
-        Serial.println(); // add a newline
+        if (keyEvt.type==0) eventDoc["kd"] = keyEvt.keyNum; else eventDoc["ku"] = keyEvt.keyNum;
+        transport->sendJson(eventDoc);
+        // Try resolve chord/single within window
+        tryResolveChordOrSingle(nowMs);
         ts_last_activity = millis();
       }
     } while (hadEvent);
@@ -189,12 +250,103 @@ void ComThread::handleEvents() {
       if (hadEvent) {
         eventDoc.clear();
         eventDoc["p"] = angleEvt.cur_pos;
-        serializeJson(eventDoc, Serial);
-        Serial.println(); // add a newline
+        transport->sendJson(eventDoc);
         ts_last_activity = millis();
       }
     } while (hadEvent);
 };
+
+
+const char* ComThread::modeName(DeviceMode m){
+  switch(m){
+    case MODE_VOLUME: return "volume";
+    case MODE_OUTPUT: return "output";
+    case MODE_INPUT: return "input";
+    case MODE_WILDCARD: return "wildcard";
+  }
+  return "volume";
+}
+
+void ComThread::sendModeEnter(DeviceMode m){
+  currentMode = m;
+  JsonDocument doc;
+  doc["evt"] = "mode.enter";
+  doc["mode"] = modeName(m);
+  transport->sendJson(doc);
+}
+
+void ComThread::sendMuteToggle(){
+  JsonDocument doc;
+  doc["evt"] = "mute.toggle";
+  transport->sendJson(doc);
+}
+
+void ComThread::sendVolumeSlot(uint8_t slot){
+  JsonDocument doc;
+  doc["evt"] = "volume.select.slot";
+  doc["slot"] = slot;
+  transport->sendJson(doc);
+}
+
+void ComThread::sendDial(uint16_t value){
+  JsonDocument doc;
+  doc["evt"] = "dial";
+  doc["value"] = value;
+  transport->sendJson(doc);
+}
+
+void ComThread::tryResolveChordOrSingle(uint32_t nowMs){
+  // Fire after window or immediately if more than 2 keys are down
+  uint8_t count = __builtin_popcount((unsigned)pressedMask);
+  if (count>=2 || (chordStartMs && (nowMs - chordStartMs >= chordWindowMs))) {
+    uint8_t mask = pressedMask;
+    // Reset timing
+    chordStartMs = 0;
+    pendingSingle = false;
+    pendingKey = 0xFF;
+    if (nowMs - chordLastFireMs < chordLockoutMs) return;
+    chordLastFireMs = nowMs;
+
+    // Map chords
+    // A=0, B=1, C=2, D=3
+    const uint8_t A = 1<<0, B = 1<<1, C = 1<<2, D = 1<<3;
+    if ((mask & (A|B)) == (A|B)) { sendModeEnter(MODE_VOLUME); return; }
+    if ((mask & (B|C)) == (B|C)) { sendModeEnter(MODE_OUTPUT); return; }
+    if ((mask & (C|D)) == (C|D)) { sendModeEnter(MODE_INPUT); return; }
+    if ((mask & (A|D)) == (A|D)) { sendModeEnter(MODE_WILDCARD); return; }
+    if ((mask & (A|C)) == (A|C)) { sendMuteToggle(); return; }
+  }
+
+  // Single press mapping when in volume mode (A..D slots)
+  if (pendingSingle && (nowMs - chordStartMs >= chordWindowMs)) {
+    uint8_t k = pendingKey;
+    pendingSingle = false;
+    pendingKey = 0xFF;
+    if (currentMode == MODE_VOLUME && k < 4) {
+      sendVolumeSlot(k);
+    }
+  }
+}
+
+void ComThread::applyDialHaptics(){
+  // Map dial range to detent profile (0..N steps)
+  uint16_t steps = (dialMax > dialMin && dialStep>0) ? (dialMax - dialMin) / dialStep : 100;
+  if (steps==0) steps = 1;
+  DetentProfile p = HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.values[0].haptic;
+  p.start_pos = 0;
+  p.end_pos = steps;
+  p.detent_count = steps;
+  foc_thread.put_haptic_config(p);
+}
+
+void ComThread::applyListHaptics(){
+  if (listCount==0) return;
+  DetentProfile p = HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.values[0].haptic;
+  p.start_pos = 0;
+  p.end_pos = listCount-1;
+  p.detent_count = listCount;
+  foc_thread.put_haptic_config(p);
+}
 
 
 
@@ -207,8 +359,7 @@ void ComThread::handleSettingsCommand(JsonVariant s) {
     JsonDocument doc;
     JsonObject obj = doc["settings"].to<JsonObject>();
     DeviceSettings::getInstance().toJSON(obj);
-    serializeJson(doc, Serial);
-    Serial.println(); // add a newline
+    transport->sendJson(doc);
   }
   if (s.is<JsonObject>()) {
     JsonObject obj = s.as<JsonObject>();
@@ -276,8 +427,7 @@ void ComThread::handleMessages() {
         break;
     }
     if (sendDoc) {
-      serializeJson(doc, Serial);
-      Serial.println(); // add a newline
+      transport->sendJson(doc);
     }
     if (incoming.message!=nullptr) {
       delete incoming.message;
@@ -301,8 +451,7 @@ void ComThread::handleProfilesCommand(JsonVariant p) {
         arr.add(pm[i]->profile_name);
       }
       doc["current"] = pm.getCurrentProfile()->profile_name;
-      serializeJson(doc, Serial);
-      Serial.println(); // add a newline
+      transport->sendJson(doc);
     }
   }
   if (p.is<JsonArray>()) {
@@ -399,8 +548,7 @@ void ComThread::handleProfileCommand(JsonVariant profile, JsonVariant updates) {
     // send the selected profile
     JsonObject obj = doc["profile"].to<JsonObject>();
     p->toJSON(obj);
-    serializeJson(doc, Serial);
-    Serial.println(); // add a newline
+    transport->sendJson(doc);
   }
   else if (updates.is<JsonObject>()) {
     JsonObject obj = updates.as<JsonObject>();
