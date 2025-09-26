@@ -56,7 +56,11 @@ class ComThread : public Thread<ComThread> {
         void sendMuteToggle();
         void sendVolumeSlot(uint8_t slot);
         void sendDial(uint16_t value);
+        void sendSelectIndex(uint16_t index);
+        void sendConfirm(uint16_t index);
         const char* modeName(DeviceMode m);
+        void updateLcdText(const char* titleOpt, const char* data1Opt);
+        void showOverlay(const char* text);
 
         // chord detection
         uint8_t pressedMask = 0;             // bit i set when key i is pressed
@@ -75,6 +79,8 @@ class ComThread : public Thread<ComThread> {
         uint16_t dialValue = 0;
         uint16_t listCount = 0;
         uint16_t listIndex = 0;
+        uint16_t lastDialSent = 65535;
+        uint16_t lastIndexSent = 65535;
         void applyDialHaptics();
         void applyListHaptics();
 

@@ -229,6 +229,7 @@ void HmiThreadButtonHandler::handleEvent(AceButton* button, uint8_t eventType, u
             for (int i=0; i<hmi_thread.hmi_config.keys[index].num_released_actions; i++) {
                 hmi_thread.handleKeyAction(hmi_thread.hmi_config.keys[index].released[i], eventType);
             }
+            // Button A confirms in selection modes; emit a simple KeyEvt only, COM interprets.
         break;
     }
     KeyEvt keyEvt = { .type=eventType, .keyNum=(uint8_t)index, .keyState=hmi_thread.keyState };

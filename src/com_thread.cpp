@@ -108,12 +108,27 @@ void ComThread::run() {
             v = doc["list"];
             if (v.is<JsonObject>()) {
               JsonObject l = v.as<JsonObject>();
+              const char* ltype = l["type"].is<const char*>() ? l["type"].as<const char*>() : nullptr;
               if (l["items"].is<JsonArray>()) {
                 JsonArray items = l["items"].as<JsonArray>();
                 listCount = items.size();
                 applyListHaptics();
+                // Update LCD subtitle to current item label if provided
+                if (l["index"].is<uint16_t>()) {
+                  listIndex = l["index"].as<uint16_t>();
+                  if (listIndex < listCount) {
+                    JsonObject itm = items[listIndex].as<JsonObject>();
+                    if (itm["label"].is<const char*>()) {
+                      const char* lbl = itm["label"].as<const char*>();
+                      if (ltype && strcmp(ltype, "output")==0) updateLcdText("Select Output", lbl);
+                      else if (ltype && strcmp(ltype, "input")==0) updateLcdText("Select Input", lbl);
+                      else updateLcdText("Select Target", lbl);
+                    }
+                  }
+                }
+              } else if (l["index"].is<uint16_t>()) {
+                listIndex = l["index"].as<uint16_t>();
               }
-              if (l["index"].is<uint16_t>()) listIndex = l["index"].as<uint16_t>();
             }
             if (doc["current"]!=nullptr) { // set current profile
               setCurrentProfile(doc["current"].as<String>());
@@ -222,7 +237,7 @@ void ComThread::handleEvents() {
       KeyEvt keyEvt;
       hadEvent = hmi_thread.get_key_event(&keyEvt);
       if (hadEvent) {
-        // Maintain pressed mask and chord timing
+        // Maintain pressed mask and chord timing; handle confirm on A press in selection modes
         uint32_t nowMs = millis();
         if (keyEvt.type==0) { // pressed
           pressedMask |= (1 << keyEvt.keyNum);
@@ -230,6 +245,13 @@ void ComThread::handleEvents() {
             chordStartMs = nowMs;
             pendingSingle = true;
             pendingKey = keyEvt.keyNum;
+          }
+          if (keyEvt.keyNum==0 && (currentMode==MODE_OUTPUT || currentMode==MODE_INPUT || currentMode==MODE_WILDCARD)) {
+            sendConfirm(lastIndexSent==65535? 0 : lastIndexSent);
+            // Return to volume after selection for output/input
+            if (currentMode==MODE_OUTPUT || currentMode==MODE_INPUT) {
+              sendModeEnter(MODE_VOLUME);
+            }
           }
         } else if (keyEvt.type==1) { // released
           pressedMask &= ~(1 << keyEvt.keyNum);
@@ -249,8 +271,17 @@ void ComThread::handleEvents() {
       hadEvent = foc_thread.get_angle_event(&angleEvt);
       if (hadEvent) {
         eventDoc.clear();
-        eventDoc["p"] = angleEvt.cur_pos;
-        transport->sendJson(eventDoc);
+        // Map current_pos to dial/list depending on active mode
+        if (currentMode == MODE_VOLUME) {
+          uint16_t v = angleEvt.cur_pos;
+          if (v!=lastDialSent) { lastDialSent = v; sendDial(v); }
+        } else if (currentMode == MODE_OUTPUT || currentMode == MODE_INPUT || currentMode == MODE_WILDCARD) {
+          uint16_t idx = angleEvt.cur_pos;
+          if (idx!=lastIndexSent) { lastIndexSent = idx; sendSelectIndex(idx); }
+        } else {
+          eventDoc["p"] = angleEvt.cur_pos;
+          transport->sendJson(eventDoc);
+        }
         ts_last_activity = millis();
       }
     } while (hadEvent);
@@ -273,12 +304,18 @@ void ComThread::sendModeEnter(DeviceMode m){
   doc["evt"] = "mode.enter";
   doc["mode"] = modeName(m);
   transport->sendJson(doc);
+  // Update LCD header
+  if (m==MODE_VOLUME) updateLcdText("Volume", nullptr);
+  else if (m==MODE_OUTPUT) updateLcdText("Select Output", nullptr);
+  else if (m==MODE_INPUT) updateLcdText("Select Input", nullptr);
+  else if (m==MODE_WILDCARD) updateLcdText("Select Target", nullptr);
 }
 
 void ComThread::sendMuteToggle(){
   JsonDocument doc;
   doc["evt"] = "mute.toggle";
   transport->sendJson(doc);
+  showOverlay("Mute toggled");
 }
 
 void ComThread::sendVolumeSlot(uint8_t slot){
@@ -288,10 +325,54 @@ void ComThread::sendVolumeSlot(uint8_t slot){
   transport->sendJson(doc);
 }
 
+void ComThread::updateLcdText(const char* titleOpt, const char* data1Opt){
+  static String sTitle="", sData1="";
+  if (titleOpt) sTitle = titleOpt; else sTitle = "";
+  if (data1Opt) sData1 = data1Opt; else sData1 = "";
+  LcdCommand cmd;
+  cmd.type = LCD_LAYOUT_DEFAULT;
+  cmd.title = &sTitle;
+  cmd.data1 = &sData1;
+  cmd.data2 = nullptr;
+  cmd.data3 = nullptr;
+  cmd.data4 = nullptr;
+  lcd_thread.put_lcd_command(cmd);
+}
+
+void ComThread::showOverlay(const char* text){
+  static String sTitle="", sData1="";
+  sTitle = "";
+  sData1 = "";
+  static String overlay = "";
+  overlay = text;
+  LcdCommand cmd;
+  cmd.type = LCD_LAYOUT_DEFAULT;
+  cmd.title = &sTitle;
+  cmd.data1 = &sData1;
+  cmd.data2 = nullptr;
+  cmd.data3 = &overlay; // used by lcd to show temporary modal
+  cmd.data4 = nullptr;
+  lcd_thread.put_lcd_command(cmd);
+}
+
 void ComThread::sendDial(uint16_t value){
   JsonDocument doc;
   doc["evt"] = "dial";
   doc["value"] = value;
+  transport->sendJson(doc);
+}
+
+void ComThread::sendSelectIndex(uint16_t index){
+  JsonDocument doc;
+  doc["evt"] = "select.index";
+  doc["index"] = index;
+  transport->sendJson(doc);
+}
+
+void ComThread::sendConfirm(uint16_t index){
+  JsonDocument doc;
+  doc["evt"] = "confirm";
+  doc["index"] = index;
   transport->sendJson(doc);
 }
 
