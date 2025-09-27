@@ -3,7 +3,7 @@
 #include <Arduino.h>
 #include "thread_crtp.h"
 #include <HardwareSerial.h>
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
 #include "HapticProfileManager.h"
 
 
@@ -51,7 +51,6 @@ class ComThread : public Thread<ComThread> {
         void dispatchHapticConfig();
         void dispatchHmiConfig();
         void dispatchSettings();
-        void dispatchAudioConfig();
         void dispatchLcdConfig();
 
         String generateDescription(HapticProfile& curr);

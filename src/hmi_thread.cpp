@@ -1,7 +1,6 @@
 #include "hmi_thread.h"
 #include "com_thread.h"
 #include "foc_thread.h"
-#include "audio/audio.h"
 #include <SparkFun_STUSB4500.h>
 
 using namespace ace_button;
@@ -30,7 +29,6 @@ void HmiThread::init(ledConfig& initial_led_config, hmiConfig& initial_hmi_confi
     led_max_brightness =  DeviceSettings::getInstance().ledMaxBrightness;
     uint8_t b = min(led_max_brightness, led_config.led_brightness);
     FastLED.setBrightness(b);
-    audioPlayer.audio_init();
 };
 
 
@@ -125,7 +123,6 @@ void HmiThread::run() {
     unsigned long updates = 0;
     unsigned long ts = micros();
 
-    audioPlayer.play_audio(chime_wav, 80);
     while (1) {
         handleSettings();
         handleConfig();
@@ -140,9 +137,6 @@ void HmiThread::run() {
             FastLED.show();
             previousMillis = currentMillis;
         }
-        #ifdef AUDIO_EN
-        audioPlayer.audio_loop();
-         #endif
         vTaskDelay(10 / portTICK_PERIOD_MS);
     }
     
@@ -162,8 +156,6 @@ void HmiThreadButtonHandler::handleEvent(AceButton* button, uint8_t eventType, u
             for (int i=0; i<hmi_thread.hmi_config.keys[index].num_pressed_actions; i++) {
                 hmi_thread.handleKeyAction(hmi_thread.hmi_config.keys[index].pressed[i], eventType);
             }
-            if (audioPlayer.audio_config.key_audio_file!=nullptr)
-                audioPlayer.play_audio(audioPlayer.audio_config.key_audio_file, audioPlayer.audio_config.audio_feedback_lvl);
         break;
         case AceButton::kEventReleased:
             hmi_thread.keyState &= ~(1<<index);

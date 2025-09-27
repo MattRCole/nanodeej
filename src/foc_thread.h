@@ -5,7 +5,6 @@
 #include "haptic.h"
 #include "nanofoc_d.h"
 #include "DeviceSettings.h"
-#include "audio/audio_api.h"
 
 
 class FocThread : public Thread<FocThread> {

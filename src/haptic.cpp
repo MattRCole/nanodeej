@@ -396,11 +396,8 @@ void HapticInterface::HapticEventCallback(HapticEvt event){
     UserHapticEventCallback(event, motor->shaft_angle, haptic_state.current_pos);
 }
 
-// For user implementation
-//  __attribute__((weak)) void UserHapticEventCallback(HapticEvt event, float currentAngle, uint16_t currentPos){
-//     /**
-//      * This function should not be modified.
-//      * To use this, implement the function in your main application.
-//      * extern "C" void HapticEventCallback(HapticEvt event, uint16_t currentPos)
-//     */
-// }
+// Default implementation (no audio feedback)
+__attribute__((weak)) void HapticInterface::UserHapticEventCallback(HapticEvt event, float currentAngle, uint16_t currentPos){
+    // No audio feedback - audio system has been removed
+    // This weak implementation can be overridden if audio is re-added later
+}

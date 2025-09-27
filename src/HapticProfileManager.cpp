@@ -2,7 +2,6 @@
 #include "./HapticProfileManager.h"
 #include "./DeviceSettings.h"
 #include "SPIFFS.h"
-#include "audio/audio_api.h"
 
 #include "class/hid/hid.h"
 
@@ -37,9 +36,6 @@ HapticProfile* HapticProfileManager::add(String name) {
       profiles[i].profile_tag = "";
       profiles[i].led_config = ledConfig();
       profiles[i].hmi_config = hmiConfig(); // TODO init all fields explicitly
-      profiles[i].audio_config.audio_file = hard_wav;
-      profiles[i].audio_config.key_audio_file = clack_wav;
-      profiles[i].audio_config.audio_feedback_lvl = 100;
       profiles[i].gui_enable = false;
       return &profiles[i];
     }
@@ -459,27 +455,6 @@ HapticProfile& HapticProfile::operator=(JsonObject& obj) {
   // gui config fields
   update_field(obj, guiEnable, gui_enable);
 
-  // sound-related fields
-  if (obj["audio"].is<JsonObject>()) {
-    JsonObject audio = obj["audio"].as<JsonObject>();
-    if (audio["clickType"].is<String>()) {
-      audio_config.audio_file = get_audio_file(audio["clickType"].as<String>());
-      dirty = true;
-    }
-    if (audio["keyClickType"].is<String>()) {
-      audio_config.key_audio_file = get_audio_file(audio["keyClickType"].as<String>());
-      dirty = true;
-    }
-    if (audio["clickLevel"].is<int>()) {
-      audio_config.audio_feedback_lvl = audio["clickLevel"].as<int>();
-      if (audio_config.audio_feedback_lvl>125)
-        audio_config.audio_feedback_lvl = 125;
-      if (audio_config.audio_feedback_lvl<0)
-        audio_config.audio_feedback_lvl = 0;
-      dirty = true;
-    }
-  }
-
   return *this;
 };
 
@@ -607,10 +582,6 @@ void HapticProfile::toJSON(JsonObject& doc){
   // other configs
   doc["guiEnable"] = gui_enable;
   // sound fields
-  JsonObject audio = doc["audio"].to<JsonObject>();
-  audio["clickType"] = get_audio_filename(audio_config.audio_file);
-  audio["keyClickType"] = get_audio_filename(audio_config.key_audio_file);
-  audio["clickLevel"] = audio_config.audio_feedback_lvl;
 };
 
 

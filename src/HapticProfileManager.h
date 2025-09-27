@@ -6,8 +6,7 @@
 #include "haptic_api.h"
 #include "led_api.h"
 #include "hmi_api.h"
-#include "audio/audio_api.h"
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
 
 
 #define MAX_PROFILES 10
@@ -48,7 +47,6 @@ public:
 
     ledConfig led_config;
     hmiConfig hmi_config;
-    audioConfig audio_config;
 
     // gui config - just one variable for now
     bool gui_enable;
