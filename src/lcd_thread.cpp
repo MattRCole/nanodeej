@@ -134,7 +134,7 @@ static void lcd_manager(lv_timer_t * lcd_cmd_timer) {
     Updates Idle Cat Animation and Profile Selection Arrow Animation
 */
 static void idle_anim_handler(lv_timer_t * animtimer) {
-    if(!com_thread.global_sleep_flag) { // Only animate when not in sleep mode
+    if(com_thread.global_sleep_flag) { // Only animate when not in sleep mode
     if (lv_scr_act()==ui_valueScreen) // Value Screen  
         {
     static uint8_t fps = 0;
