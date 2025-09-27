@@ -426,12 +426,16 @@ void ComThread::tryResolveChordOrSingle(uint32_t nowMs){
 
     // Map chords
     // A=0, B=1, C=2, D=3
-    const uint8_t A = 1<<0, B = 1<<1, C = 1<<2, D = 1<<3;
-    if ((mask & (A|B)) == (A|B)) { sendModeEnter(MODE_VOLUME); return; }
-    if ((mask & (B|C)) == (B|C)) { sendModeEnter(MODE_OUTPUT); return; }
-    if ((mask & (C|D)) == (C|D)) { sendModeEnter(MODE_INPUT); return; }
-    if ((mask & (A|D)) == (A|D)) { sendModeEnter(MODE_WILDCARD); return; }
-    if ((mask & (A|C)) == (A|C)) { sendMuteToggle(); return; }
+    uint8_t vol = DeviceSettings::getInstance().chord_volume;
+    uint8_t out = DeviceSettings::getInstance().chord_output;
+    uint8_t in  = DeviceSettings::getInstance().chord_input;
+    uint8_t wld = DeviceSettings::getInstance().chord_wildcard;
+    uint8_t mut = DeviceSettings::getInstance().chord_mute;
+    if ((mask & vol) == vol) { sendModeEnter(MODE_VOLUME); return; }
+    if ((mask & out) == out) { sendModeEnter(MODE_OUTPUT); return; }
+    if ((mask & in)  == in)  { sendModeEnter(MODE_INPUT); return; }
+    if ((mask & wld) == wld) { sendModeEnter(MODE_WILDCARD); return; }
+    if ((mask & mut) == mut) { sendMuteToggle(); return; }
   }
 
   // Single press mapping when in volume mode (A..D slots)

@@ -39,6 +39,12 @@ DeviceSettings::DeviceSettings() {
     wifiEnabled = false;
     midi_sysex_id = 0x00;
     idleTimeout = 10000;
+    // default chord bitmasks
+    chord_volume = 0b00000011;   // A+B
+    chord_output = 0b00000110;   // B+C
+    chord_input =  0b00001100;   // C+D
+    chord_wildcard = 0b00001001; // A+D
+    chord_mute = 0b00000101;     // A+C
 };
 
 
@@ -96,6 +102,14 @@ DeviceSettings& DeviceSettings::operator=(JsonObject& obj){
         midi_sysex_id = obj["sysexId"].as<uint8_t>();
     if (obj["idleTimeout"].is<uint32_t>())
         idleTimeout = obj["idleTimeout"].as<uint32_t>();
+    if (obj["chords"].is<JsonObject>()) {
+        JsonObject ch = obj["chords"].as<JsonObject>();
+        if (ch["volume"].is<uint8_t>()) chord_volume = ch["volume"].as<uint8_t>();
+        if (ch["output"].is<uint8_t>()) chord_output = ch["output"].as<uint8_t>();
+        if (ch["input"].is<uint8_t>()) chord_input = ch["input"].as<uint8_t>();
+        if (ch["wildcard"].is<uint8_t>()) chord_wildcard = ch["wildcard"].as<uint8_t>();
+        if (ch["mute"].is<uint8_t>()) chord_mute = ch["mute"].as<uint8_t>();
+    }
     dirty = true;
     return *this;
 };
@@ -132,6 +146,12 @@ void DeviceSettings::toJSON(JsonObject& obj){
     midi2Obj["nano"] = midi2.nano;
     obj["sysexId"] = midi_sysex_id;
     obj["idleTimeout"] = idleTimeout;
+    JsonObject ch = obj["chords"].to<JsonObject>();
+    ch["volume"] = chord_volume;
+    ch["output"] = chord_output;
+    ch["input"] = chord_input;
+    ch["wildcard"] = chord_wildcard;
+    ch["mute"] = chord_mute;
 };
 
 

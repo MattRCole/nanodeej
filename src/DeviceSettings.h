@@ -72,6 +72,13 @@ public:
     bool wifiEnabled;
     uint32_t idleTimeout;
 
+    // chord mappings (bitmask of pressed keys: A=1<<0, B=1<<1, C=1<<2, D=1<<3)
+    uint8_t chord_volume;
+    uint8_t chord_output;
+    uint8_t chord_input;
+    uint8_t chord_wildcard;
+    uint8_t chord_mute;
+
     // read-only settings
     String serialNumber;
     String firmwareVersion;
