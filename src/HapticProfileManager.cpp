@@ -250,7 +250,7 @@ void HapticProfileManager::fromSPIFFS() {
     }
   }
   else {
-    Serial.print("{\"type\":\"debug\",\"msg\":\"")
+    Serial.print("{\"type\":\"debug\",\"msg\":\"");
     Serial.print(count);
     Serial.println(" profiles loaded.\"}");
   }
@@ -259,17 +259,17 @@ void HapticProfileManager::fromSPIFFS() {
 
 
 void HapticProfileManager::toSPIFFS() {
-  Serial.println("Saving profiles to SPIFFS...");
+  Serial.println("{\"type\":\"debug\",\"msg\":\"Saving profiles to SPIFFS...\"}");
   File dir = SPIFFS.open(PROFILES_DIRECTORY, "r");
   if (!dir) {
     Serial.println("Creating profiles directory...");
     if (!SPIFFS.mkdir(PROFILES_DIRECTORY)){
-      Serial.println("ERROR: Failed to create profiles directory.");
+      Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: Failed to create profiles directory.\"}");
       return;
     }
     dir = SPIFFS.open(PROFILES_DIRECTORY, "r");
     if (!dir) {
-      Serial.println("ERROR: Failed to open profiles directory.");
+      Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: Failed to open profiles directory.\"}");
       return;
     }
   }
@@ -291,8 +291,7 @@ void HapticProfileManager::toSPIFFS() {
       if (!found) {
         String remove = PROFILES_DIRECTORY;
         remove += "/" + filename;
-        Serial.print("Removing deleted profile: ");
-        Serial.println(remove);
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Removing deleted profile: " + remove + "\"}");
         SPIFFS.remove(remove);
       }
     }
@@ -301,8 +300,7 @@ void HapticProfileManager::toSPIFFS() {
   // then save any dirty profiles to SPIFFS
   for (int i=0; i<MAX_PROFILES; i++) {
     if (profiles[i].profile_name!="" && profiles[i].dirty) {
-      Serial.print("Saving profile: ");
-      Serial.println(profiles[i].profile_name);
+      Serial.println("{\"type\":\"debug\",\"msg\":\"Saving profile: " + profiles[i].profile_name + "\"}");
       String filename = PROFILES_DIRECTORY;
       filename += "/";
       filename += profiles[i].profile_name;
@@ -317,8 +315,7 @@ void HapticProfileManager::toSPIFFS() {
         profiles[i].dirty = false;
       }
       else {
-        Serial.print("ERROR: Failed to save profile: ");
-        Serial.println(profiles[i].profile_name);
+        Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: Failed to save profile: " + profiles[i].profile_name + "\"}");
       }
     }
   }
