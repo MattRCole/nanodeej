@@ -38,7 +38,7 @@ void LcdThread::put_lcd_command(LcdCommand& cmd) {
 void LcdThread::handleLcdCommand() {
     LcdCommand cmd;
     if (xQueueReceive(_q_lcd_in, &cmd, (TickType_t)0)) {
-        // TODO Implement LCD Command Handling
+        // Update last command; numeric fields help selection list UI
         last_command = cmd;
     }
 };

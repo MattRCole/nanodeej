@@ -24,6 +24,9 @@ public:
     String* data2 = nullptr;
     String* data3 = nullptr;
     String* data4 = nullptr;
+    // Optional numeric fields for selection lists
+    uint16_t index = 0;
+    uint16_t count = 0;
 };
 
 

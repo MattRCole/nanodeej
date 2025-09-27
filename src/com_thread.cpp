@@ -90,6 +90,14 @@ void ComThread::run() {
                 dialValue = ui["value"].as<uint16_t>();
                 sendDial(dialValue);
               }
+              // Optionally, host can push selection index/count for UI
+              if (ui["index"].is<uint16_t>()) listIndex = ui["index"].as<uint16_t>();
+              if (ui["count"].is<uint16_t>()) listCount = ui["count"].as<uint16_t>();
+              if (ui["title"].is<const char*>() || ui["subtitle"].is<const char*>()) {
+                const char* t = ui["title"].is<const char*>() ? ui["title"].as<const char*>() : nullptr;
+                const char* s = ui["subtitle"].is<const char*>() ? ui["subtitle"].as<const char*>() : nullptr;
+                updateLcdText(t, s);
+              }
             }
             v = doc["dial"];
             if (v.is<JsonObject>()) {
