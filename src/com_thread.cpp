@@ -128,9 +128,9 @@ void ComThread::run() {
                     JsonObject itm = items[listIndex].as<JsonObject>();
                     if (itm["label"].is<const char*>()) {
                       const char* lbl = itm["label"].as<const char*>();
-                      if (ltype && strcmp(ltype, "output")==0) updateLcdText("Select Output", lbl);
-                      else if (ltype && strcmp(ltype, "input")==0) updateLcdText("Select Input", lbl);
-                      else updateLcdText("Select Target", lbl);
+                      if (ltype && strcmp(ltype, "output")==0) updateLcdSelection("Select Output", lbl, listIndex, listCount);
+                      else if (ltype && strcmp(ltype, "input")==0) updateLcdSelection("Select Input", lbl, listIndex, listCount);
+                      else updateLcdSelection("Select Target", lbl, listIndex, listCount);
                     }
                   }
                 }
@@ -352,6 +352,8 @@ void ComThread::updateLcdText(const char* titleOpt, const char* data1Opt){
   cmd.data2 = nullptr;
   cmd.data3 = nullptr;
   cmd.data4 = nullptr;
+  cmd.index = listIndex;
+  cmd.count = listCount;
   lcd_thread.put_lcd_command(cmd);
 }
 
@@ -368,6 +370,24 @@ void ComThread::showOverlay(const char* text){
   cmd.data2 = nullptr;
   cmd.data3 = &overlay; // used by lcd to show temporary modal
   cmd.data4 = nullptr;
+  cmd.index = listIndex;
+  cmd.count = listCount;
+  lcd_thread.put_lcd_command(cmd);
+}
+
+void ComThread::updateLcdSelection(const char* titleOpt, const char* data1Opt, uint16_t index, uint16_t count){
+  static String sTitle="", sData1="";
+  if (titleOpt) sTitle = titleOpt; else sTitle = "";
+  if (data1Opt) sData1 = data1Opt; else sData1 = "";
+  LcdCommand cmd;
+  cmd.type = LCD_LAYOUT_DEFAULT;
+  cmd.title = &sTitle;
+  cmd.data1 = &sData1;
+  cmd.data2 = nullptr;
+  cmd.data3 = nullptr;
+  cmd.data4 = nullptr;
+  cmd.index = index;
+  cmd.count = count;
   lcd_thread.put_lcd_command(cmd);
 }
 

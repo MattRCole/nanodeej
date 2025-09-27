@@ -108,6 +108,21 @@ static void lcd_manager(lv_timer_t * lcd_cmd_timer) {
                     }
                 }
             }
+            // If count/index provided, render count next to title/subtitle
+            if (lcd_thread.last_command.count>0) {
+                char buf[32];
+                snprintf(buf, sizeof(buf), "%u/%u", (unsigned)(lcd_thread.last_command.index+1), (unsigned)lcd_thread.last_command.count);
+                // Borrow profileDesc to show index/count if no data1
+                if (lcd_thread.last_command.data1==nullptr || lcd_thread.last_command.data1->length()==0) {
+                    lv_obj_remove_flag(ui_profileDesc, LV_OBJ_FLAG_HIDDEN);
+                    lv_label_set_text_fmt(ui_profileDesc, "%s", buf);
+                } else {
+                    // Append count to title visually by toggling ui_msgTitle2 if needed
+                    // Keep it simple: show in profileDesc line
+                    lv_obj_remove_flag(ui_profileDesc, LV_OBJ_FLAG_HIDDEN);
+                    lv_label_set_text_fmt(ui_profileDesc, "%s", buf);
+                }
+            }
         }    
     }
 }

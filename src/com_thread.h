@@ -61,6 +61,7 @@ class ComThread : public Thread<ComThread> {
         const char* modeName(DeviceMode m);
         void updateLcdText(const char* titleOpt, const char* data1Opt);
         void showOverlay(const char* text);
+        void updateLcdSelection(const char* titleOpt, const char* data1Opt, uint16_t index, uint16_t count);
 
         // chord detection
         uint8_t pressedMask = 0;             // bit i set when key i is pressed
