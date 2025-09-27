@@ -76,7 +76,7 @@ void HmiThread::handleSettings() {
             FastLED.setBrightness(newBrightness);
             updateKeyLeds();
         }
-        Serial.println("Hmi settings updated from global settings");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Hmi settings updated from global settings\"}");
     }
 };
 
@@ -349,12 +349,12 @@ STUSB4500 usb_pd;
 PowerType HmiThread::init_pd() {
   Wire.begin(PIN_NANO_I2C_SDA, PIN_NANO_I2C_SCL);
   if (!usb_pd.begin()) {
-    Serial.println("STUSB4500 not found");
+    Serial.println("{\"type\":\"debug\",\"msg\":\"STUSB4500 not found\"}");
   } else {
-    Serial.println("STUSB4500 found");
+    Serial.println("{\"type\":\"debug\",\"msg\":\"STUSB4500 found\"}");
   }
   if (usb_pd.getPdoNumber()!=2) {
-    Serial.println("Setting USB profiles to NVM");
+    Serial.println("{\"type\":\"debug\",\"msg\":\"Setting USB profiles to NVM\"}");
     usb_pd.setUsbCommCapable(true);
     usb_pd.setVoltage(1,5.0);
     usb_pd.setCurrent(1,3.0);

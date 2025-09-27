@@ -81,7 +81,7 @@ void BinarisAudioPlayer::audio_init(){
     hard_wav_sample = new XT_Wav_Class((const unsigned char *)hard_wav);
     chime_wav_sample = new XT_Wav_Class((const unsigned char *)chime_wav);
     data_ptr=nullptr; // not used with xt_player
-    Serial.println("XT Audio library initialized");
+    Serial.println("{\"type\":\"debug\",\"msg\":\"XT Audio library initialized\"}");
 #else
     i2s_config.mode = (i2s_mode_t)(I2S_MODE_MASTER | I2S_MODE_TX);
     i2s_config.sample_rate = SAMPLES_PER_SEC;                       // Note, max sample rate
@@ -155,12 +155,12 @@ void BinarisAudioPlayer::start_play(uint8_t* audio_file){
         else 
             sample = nullptr;
         if (sample==nullptr)
-            Serial.println("? audio file");
+            Serial.println("{\"type\":\"debug\",\"msg\":\"? audio file\"}");
         if (xt_player==nullptr)
-            Serial.println("? audio plr");
+            Serial.println("{\"type\":\"debug\",\"msg\":\"? audio plr\"}");
         if (sample!=nullptr && xt_player!=nullptr) {
             xt_player->Play(sample);
-            Serial.println("Playing "+get_audio_filename(audio_file));
+            Serial.println("{\"type\":\"debug\",\"msg\":\"Playing "+get_audio_filename(audio_file) + "\"}");
         }
     #else
         data_ptr = &audio_file[44];
@@ -174,17 +174,17 @@ bool BinarisAudioPlayer::check_file(String fName, uint8_t* audio_file){
         audio_file[8] == 'W' && audio_file[9] == 'A' && audio_file[10] == 'V' && audio_file[11] == 'E' &&
         audio_file[12] == 'f' && audio_file[13] == 'm' && audio_file[14] == 't' && audio_file[15] == ' ' &&
         audio_file[36] == 'd' && audio_file[37] == 'a' && audio_file[38] == 't' && audio_file[39] == 'a')) {
-            Serial.println(fName + ": audio file is not a valid WAV file.");
+            Serial.println("{\"type\":\"debug\",\"msg\":\"" + fName + ": audio file is not a valid WAV file.\"}");
         return false;
     }
     #if defined(AUDIO_FILES_STEREO)
     if (!(audio_file[20]==0x01 && audio_file[21]==0x00 && audio_file[22]==0x02 && audio_file[23]==0x00)) {
-        Serial.println(fName + ": audio file is not 2 channel PCM.");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"" + fName + ": audio file is not 2 channel PCM.\"}");
         return false;
     }
     #else
     if (!(audio_file[20]==0x01 && audio_file[21]==0x00 && audio_file[22]==0x01 && audio_file[23]==0x00)) {
-        Serial.println(fName + ": audio file is not 1 channel PCM.");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"" + fName + ": audio file is not 1 channel PCM.\"}");
         return false;
     }
     #endif
@@ -192,20 +192,20 @@ bool BinarisAudioPlayer::check_file(String fName, uint8_t* audio_file){
     b1 = (SAMPLES_PER_SEC >> 8) & 0xFF;
     b2 = SAMPLES_PER_SEC & 0xFF;
     if (!(audio_file[24]==b2 && audio_file[25]==b1 && audio_file[26]==0x00 && audio_file[27]==0x00)) {
-        Serial.println(fName + ": audio file is not "+String(SAMPLES_PER_SEC)+" Hz.");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"" + fName + ": audio file is not "+String(SAMPLES_PER_SEC)+" Hz.\"}");
         return false;
     }
     if (!(audio_file[32]==0x04 && audio_file[33]==0x00)) {
-        Serial.println(fName + ": block align is not 4.");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"" + fName + ": block align is not 4.\"}");
         return false;
     }
     if (!(audio_file[34]==0x10 && audio_file[35]==0x00)) {
-        Serial.println(fName + ": audio file is not 16 bit.");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"" + fName + ": audio file is not 16 bit.\"}");
         return false;
     }
     uint32_t data_size = audio_file[40] + (audio_file[41] << 8) + (audio_file[42] << 16) + (audio_file[43] << 24);
     if (data_size%4 != 0) {
-        Serial.println(fName + ": audio data size is not a multiple of 4.");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"" + fName + ": audio data size is not a multiple of 4.\"}");
         return false;
     }
     return true;
@@ -221,14 +221,14 @@ void BinarisAudioPlayer::handle_audio_commands(){
                     start_play(command.audio_file);
                 }
                 else
-                    Serial.println("x");
+                    Serial.println("{\"type\":\"debug\",\"msg\":\"x\"}");
                 break;
             case AudioCommandType::PLAY_HAPTIC:
                 if (data_ptr==nullptr) { // only play if no audio is currently playing
                     start_play(audio_config.audio_file);
                 }
                 else
-                    Serial.println("x");
+                    Serial.println("{\"type\":\"debug\",\"msg\":\"x\"}");
                 break;
             case AudioCommandType::CONFIG:
                 //Serial.println("Audio config");

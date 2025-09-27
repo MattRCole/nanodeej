@@ -32,10 +32,11 @@ void setup() {
   Serial.begin(DEFAULT_SERIAL_SPEED);
 
   delay(100);
-  Serial.println("Welcome to Nano_D++!");
-  Serial.print("Firmware version: ");
-  Serial.println(NANO_FIRMWARE_VERSION);
-  Serial.println("Initializing...");
+  Serial.println("{\"type\":\"debug\",\"msg\":\"Welcome to Nano_D++!\"}");
+  Serial.print("{\"type\":\"debug\",\"msg\":\"Firmware version: ");
+  Serial.print(NANO_FIRMWARE_VERSION);
+  Serial.println("\"}");
+  Serial.println("{\"type\":\"debug\",\"msg\":\"Initializing...\"}");
   // before we begin, load our global settings...
   DeviceSettings& settings = DeviceSettings::getInstance();
   settings.init();

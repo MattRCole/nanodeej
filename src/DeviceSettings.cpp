@@ -95,10 +95,10 @@ void DeviceSettings::toJSON(JsonObject& obj){
 bool DeviceSettings::toSPIFFS(){
     // note: use of serial: this function is called from the comms thread.
     if (dirty) {
-        Serial.println("Saving settings to SPIFFS...");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Saving settings to SPIFFS...\"}");
         File file = SPIFFS.open(DEVICE_SETTINGS_FILE, "w");
         if (!file) {
-            Serial.println("ERROR: unable to open settings file!");
+            Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: unable to open settings file!\"}");
             return false;
         }
         // create the JSON
@@ -108,7 +108,7 @@ bool DeviceSettings::toSPIFFS(){
         // write the JSON to the file
         serializeJson(doc, file);
         file.close();
-        Serial.println("Settings saved");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Settings saved\"}");
         dirty = false;
     }
     return true;
@@ -117,28 +117,28 @@ bool DeviceSettings::toSPIFFS(){
 
 bool DeviceSettings::fromSPIFFS(){
     // note: use of serial: this function is called from setup() in main.cpp, or from the comms thread.
-    Serial.println("Loading settings from SPIFFS...");
+    Serial.println("{\"type\":\"debug\",\"msg\":\"Loading settings from SPIFFS...\"}");
     if (SPIFFS.exists(DEVICE_SETTINGS_FILE)) {
         File file = SPIFFS.open(DEVICE_SETTINGS_FILE, "r");
         if (!file) {
-            Serial.println("ERROR: unable to open settings file!");
+            Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: unable to open settings file!\"}");
             return false;
         }
         // parse the JSON
         JsonDocument doc;
         DeserializationError error = deserializeJson(doc, file);
         if (error) {
-            Serial.println("ERROR: unable to parse settings file!");
+            Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: unable to parse settings file!\"}");
             return false;
         }
         // update the settings
         JsonObject obj = doc.as<JsonObject>();
         *this = obj;
-        Serial.println("Settings loaded");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Settings loaded\"}");
         dirty = false;
     }
     else {
-        Serial.println("Settings not found, default settings used...");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Settings not found, default settings used...\"}");
     }
     return true;
 };
@@ -146,14 +146,14 @@ bool DeviceSettings::fromSPIFFS(){
 
 bool DeviceSettings::init() {
     if (!nano_preferences.begin("nano_D", false)) {
-        Serial.println("ERROR: unable to open Preferences!");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: unable to open Preferences!\"}");
         return false;
     }
     if (SPIFFS.begin(true)) {
-        Serial.println("SPIFFS mounted successfully");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"SPIFFS mounted successfully\"}");
     }
     else {
-        Serial.println("ERROR: SPIFFS mount failed");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"ERROR: SPIFFS mount failed\"}");
         // this is kind of fatal...
         return false;
     }

@@ -166,7 +166,7 @@ String HapticProfileManager::getPrevProfileName(){
 
 
 void HapticProfileManager::fromSPIFFS() {
-  Serial.println("Loading profiles from SPIFFS...");
+  Serial.println("{\"type\":\"debug\",\"msg\":\"Loading profiles from SPIFFS...\"}");
   // load profiles from SPIFFS
   int count = 0;
   File dir = SPIFFS.open(PROFILES_DIRECTORY, "r");
@@ -174,20 +174,23 @@ void HapticProfileManager::fromSPIFFS() {
     File file = dir.openNextFile();
     while (file) {
       if (!file.isDirectory() && String(file.name()).endsWith(".json")) {
-          Serial.print("Loading profile: ");
-          Serial.println(file.name());
+          Serial.print("{\"type\":\"debug\",\"msg\":\"Loading profile: ");
+          Serial.print(file.name());
+          Serial.println("\"}");
           // load the profile
           JsonDocument doc;
           DeserializationError error = deserializeJson(doc, file);
           if (error) {
-            Serial.print("ERROR: Failed to parse profile: ");
-            Serial.println(file.name());
+            Serial.print("{\"type\":\"debug\",\"msg\":\"ERROR: Failed to parse profile: ");
+            Serial.print(file.name());
+            Serial.println("\"}");
           }
           else {
             HapticProfile* profile = add(doc["name"].as<String>());
             if (profile!=nullptr) {
-              Serial.print("Added profile: ");
-              Serial.println(profile->profile_name);
+              Serial.print("{\"type\":\"debug\",\"msg\":\"Added profile: \"}");
+              Serial.print(profile->profile_name);
+              Serial.println("\"}");
               JsonObject obj = doc.as<JsonObject>();
               *profile = obj;
               profile->dirty = (obj["version"].isNull() || obj["version"].as<int>()!=PROFILE_VERSION);
@@ -198,8 +201,9 @@ void HapticProfileManager::fromSPIFFS() {
               count++;
             }
             else {
-              Serial.print("ERROR: Failed to add profile: ");
+              Serial.print("{\"type\":\"debug\",\"msg\":\"ERROR: Failed to add profile: ");
               Serial.println(file.name());
+              Serial.println("\"}");
             }
           }
       }
@@ -209,12 +213,11 @@ void HapticProfileManager::fromSPIFFS() {
     dir.close();
   }
   if (count==0) {
-    Serial.println("No profiles found.");
+    Serial.println("{\"type\":\"debug\",\"msg\":\"No profiles found.\"}");
     // add a default profile
     HapticProfile* profile = add("Default Profile"); // structs are initialized with default values
     if (profile!=nullptr) {
-      Serial.print("Added profile ");
-      Serial.println(profile->profile_name);
+      Serial.println("{\"type\":\"debug\",\"msg\":\"Added profile " + profile->profile_name + "\"}");
       // only for the default profile, set a default key-mapping
       profile->hmi_config.keys[0].num_pressed_actions = 1;
       profile->hmi_config.keys[0].pressed[0].type = keyActionType::KA_PROFILE_NEXT;
@@ -242,13 +245,14 @@ void HapticProfileManager::fromSPIFFS() {
       current_profile = profile;
     }
     else {
-      Serial.println("FATAL: Failed to add default profile.");
+      Serial.println("{\"type\":\"debug\",\"msg\":\"FATAL: Failed to add default profile.\"}");
       while (1);
     }
   }
   else {
+    Serial.print("{\"type\":\"debug\",\"msg\":\"")
     Serial.print(count);
-    Serial.println(" profiles loaded.");
+    Serial.println(" profiles loaded.\"}");
   }
 };
 

@@ -33,7 +33,7 @@ String data4 = "";
 
 void ComThread::run() {
     // serial is initialized in main.cpp, but subsequently used only here
-    Serial.println("COM thread started");
+    Serial.println("{\"type\": \"debug\",\"msg\": \"COM thread started\"}");
     unsigned long ts = millis();
     ts_last_activity = ts;
     JsonDocument idleDoc;
@@ -91,7 +91,7 @@ void ComThread::run() {
             if (v.is<bool>()) { // recalibrate motor
               // enter calibration mode
               if (v.as<bool>()) {
-                Serial.println("Recalibrating motor");
+                Serial.println("{\"type\":\"debug\",\"msg\":\"Recalibrating motor\"}");
                 foc_thread.put_motor_command(new String("129=1"));
               }
             }
@@ -321,7 +321,7 @@ void ComThread::handleProfilesCommand(JsonVariant p) {
           }
         }
         if (!found) {
-          Serial.println("Deleting profile "+p->profile_name);
+          Serial.println("{\"type\":\"debug\",\"msg\":\"Deleting profile "+p->profile_name+"\"}");
           pm.remove(p->profile_name);
         }
       }

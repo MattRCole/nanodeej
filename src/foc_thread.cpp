@@ -146,7 +146,7 @@ void FocThread::handleMessage() {
     String* message = nullptr;
     if (xQueueReceive(_q_motor_in, &message, (TickType_t)0)) {
         if (message!=nullptr) {
-            Serial.println("Received and handling message: "+*message);
+            Serial.println("{\"type\":\"debug\",\"msg\":\"Received and handling message: "+*message+"\"}");
             commander.handleMessage(message);
             StringMessage smsg(message, StringMessageType::STRING_MESSAGE_MOTOR);
             com_thread.put_string_message(smsg); // message String* is returned to comms thread, where it is deleted if necessary

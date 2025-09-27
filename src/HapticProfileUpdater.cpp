@@ -9,8 +9,6 @@ void HapticProfileManager::updateProfile(HapticProfile* profile, uint8_t from_ve
         profile->hmi_config.keys[1].num_pressed_actions = 0;
         profile->hmi_config.keys[2].num_pressed_actions = 0;
         profile->hmi_config.keys[3].num_pressed_actions = 0;
-        Serial.print("Updated profile ");
-        Serial.print(profile->profile_name);
-        Serial.println(" from version 1 to 2 (removed MIDI/HID actions)");
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Updated profile " + profile->profile_name + " from version 1 to 2 (removed MIDI/HID actions)\"}");
     }
 }
