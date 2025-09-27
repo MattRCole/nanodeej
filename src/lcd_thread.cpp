@@ -174,7 +174,7 @@ static void counter_handler(lv_timer_t * postimer) {
     static bool overlay_toggle = false; // Default Overlay Toggle
     uint16_t pos = foc_thread.pass_cur_pos(); // Get Current Position from FOC Thread
     uint16_t end_pos = foc_thread.pass_end_pos(); // Get End Position from FOC Thread
-    uint16_t last_end_pos;
+    static uint16_t last_end_pos = -1;
     
     if (pos != last_pos) {
        
