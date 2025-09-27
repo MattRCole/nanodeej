@@ -458,10 +458,7 @@ void ComThread::dispatchSettings() {
     DeviceSettings& ds = DeviceSettings::getInstance();
     HmiDeviceSettings hmiSettings{
       .ledMaxBrightness = ds.ledMaxBrightness,
-      .deviceOrientation = ds.deviceOrientation,
-      .midiUsb = ds.midiUsb,
-      .midi2 = ds.midi2,
-      .midi_sysex_id = ds.midi_sysex_id
+      .deviceOrientation = ds.deviceOrientation
     };
     hmi_thread.put_settings(hmiSettings);
     global_idle_timeout = ds.idleTimeout;
@@ -479,16 +476,6 @@ String ComThread::generateDescription(HapticProfile& curr) {
   String desc = "";
   if (curr.hmi_config.knob.num>0) {
     switch (curr.hmi_config.knob.values[0].type) {
-      case knobValueType::KV_MIDI:
-        desc = "MIDI CC ";
-        desc += curr.hmi_config.knob.values[0].midi.cc;
-        break;
-      case knobValueType::KV_GAMEPAD:
-        desc = "Gamepad";
-        break;
-      case knobValueType::KV_MOUSE:
-        desc = "Mouse";
-        break;
       case knobValueType::KV_ACTIONS:
         desc = "Actions";
         break;

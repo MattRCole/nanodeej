@@ -38,7 +38,6 @@ class HmiThread : public Thread<HmiThread> {
         HmiThread(const uint8_t task_core);
         ~HmiThread();
        
-        void init_usb();
         PowerType init_pd();
         void init(ledConfig& initial_led_config, hmiConfig& initial_hmi_config);
     
@@ -52,7 +51,6 @@ class HmiThread : public Thread<HmiThread> {
         void halvesPointer(int indicator, int startpos, int endpos, int orientation, const struct CRGB& pointerCol, const struct CRGB& preCol, const struct CRGB& postCol);
         void IdleLeds(int fps, const struct CRGB& idleColStart, const struct CRGB& idleColMid, const struct CRGB& idleColEnd);
 
-        void handleSysex(byte* array, unsigned size);
 
     protected:
         void run();
@@ -82,29 +80,15 @@ class HmiThread : public Thread<HmiThread> {
         hmiConfig hmi_config;
         HmiThreadButtonHandler button_handler[4];
         ace_button::AceButton* buttons[4];
-        uint8_t num_key_codes = 0;
-        uint8_t last_num_key_codes = 0;
-        uint8_t current_key_codes[6] = { 0 };
         uint8_t keyState = 0;
-        uint8_t current_mouse_buttons = 0;
-        uint8_t last_mouse_buttons = 0;
-        uint8_t current_pad_buttons = 0;
-        uint8_t last_pad_buttons = 0;
 
         // button handler
         void handleKeyAction(keyAction& action, uint8_t eventType);
-        void handleHid();
 
         // knob
         float lastValue;
         float currentValue;
         void updateValue();
-
-        // midi config
-        void handleMidi();
-        midiSettings midiUsbSettings;
-        midiSettings midi2Settings;
-        uint8_t midi_sysex_id = 0x00;
 
         // animations
         bool gReverseDirection = false;

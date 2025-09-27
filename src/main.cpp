@@ -22,14 +22,13 @@ STUSB4500 usb;
 
 void setup() {
 
-  // initialize USB
+  // Initialize basic USB device (needed for serial communication)
   TinyUSBDevice.begin();
-  hmi_thread.init_usb();
-  TinyUSBDevice.setID(0x239A, 0x8010); // TODO move to #define
-  TinyUSBDevice.setProductDescriptor("Nano_D++ (Beta)"); // TODO move to #define
+  TinyUSBDevice.setID(0x239A, 0x8010);
+  TinyUSBDevice.setProductDescriptor("Nano_D++ (Beta)");
   TinyUSBDevice.setManufacturerDescriptor("Binaris Circuitry");
   TinyUSBDevice.setSerialDescriptor("Nano_D");
-  //TinyUSBDevice.attach();
+
   Serial.begin(DEFAULT_SERIAL_SPEED);
 
   delay(100);

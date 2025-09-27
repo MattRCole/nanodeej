@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include "thread_crtp.h"
 #include <HardwareSerial.h>
-#include <MIDI.h>
 #include <ArduinoJSON.h>
 #include "HapticProfileManager.h"
 

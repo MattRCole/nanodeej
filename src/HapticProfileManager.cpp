@@ -218,27 +218,19 @@ void HapticProfileManager::fromSPIFFS() {
       // only for the default profile, set a default key-mapping
       profile->hmi_config.keys[0].num_pressed_actions = 1;
       profile->hmi_config.keys[0].pressed[0].type = keyActionType::KA_PROFILE_NEXT;
-      profile->hmi_config.keys[1].num_pressed_actions = 1;
-      profile->hmi_config.keys[1].pressed[0].type = keyActionType::KA_KEY;
-      profile->hmi_config.keys[1].pressed[0].hid.num = 1;
-      profile->hmi_config.keys[1].pressed[0].hid.key_codes[0] = HID_KEY_A;
-      profile->hmi_config.keys[2].num_pressed_actions = 1;
-      profile->hmi_config.keys[2].pressed[0].type = keyActionType::KA_KEY;
-      profile->hmi_config.keys[2].pressed[0].hid.num = 1;
-      profile->hmi_config.keys[2].pressed[0].hid.key_codes[0] = HID_KEY_B;
+      profile->hmi_config.keys[1].num_pressed_actions = 0;
+      profile->hmi_config.keys[2].num_pressed_actions = 0;
       profile->hmi_config.keys[3].num_pressed_actions = 1;
       profile->hmi_config.keys[3].pressed[0].type = keyActionType::KA_PROFILE_PREV;
       profile->dirty = true;
       profile->hmi_config.knob.num = 1;
-      profile->hmi_config.knob.values[0].type = knobValueType::KV_MIDI;
+      profile->hmi_config.knob.values[0].type = knobValueType::KV_ACTIONS;
       profile->hmi_config.knob.values[0].value_min = 0;
       profile->hmi_config.knob.values[0].value_max = 127;
       profile->hmi_config.knob.values[0].angle_min = 0;
       profile->hmi_config.knob.values[0].angle_max = _2PI;
       profile->hmi_config.knob.values[0].wrap = false;
       profile->hmi_config.knob.values[0].step = 1;
-      profile->hmi_config.knob.values[0].midi.channel = 1;
-      profile->hmi_config.knob.values[0].midi.cc = 0;
       profile->hmi_config.knob.values[0].haptic.mode = HapticMode::REGULAR;
       profile->hmi_config.knob.values[0].haptic.detent_count = 127;
       profile->hmi_config.knob.values[0].haptic.start_pos = 0;
@@ -433,20 +425,7 @@ HapticProfile& HapticProfile::operator=(JsonObject& obj) {
           update_field(haptic, detentStrength, hmi_config.knob.values[i].haptic.detent_strength);
         }
         String type = value["type"].as<String>();
-        if (type=="midi") {
-          hmi_config.knob.values[i].type = knobValueType::KV_MIDI;
-          update_field(value, channel, hmi_config.knob.values[i].midi.channel);
-          update_field(value, cc, hmi_config.knob.values[i].midi.cc);
-        }
-        else if (type=="mouse") {
-          hmi_config.knob.values[i].type = knobValueType::KV_MOUSE;
-          dirty = true;
-        }
-        else if (type=="gamepad") {
-          hmi_config.knob.values[i].type = knobValueType::KV_GAMEPAD;
-          dirty = true;
-        }
-        else if (type=="actions") {
+        if (type=="actions") {
           hmi_config.knob.values[i].type = knobValueType::KV_ACTIONS;
           if (value["every"].is<JsonObject>()) {
             JsonObject o = value["every"].as<JsonObject>();
@@ -508,44 +487,7 @@ void HapticProfile::keyActionFromJSON(JsonObject& obj, keyAction& action) {
   if (!obj["type"].isNull()) {
     action.profile = "";
     String type = obj["type"].as<String>();
-    if (type=="midi") {
-      action.type = keyActionType::KA_MIDI;
-      update_field(obj, channel, action.midi.channel);
-      update_field(obj, cc, action.midi.cc);
-      update_field(obj, val, action.midi.val);
-    }
-    else if (type=="key") {
-      action.type = keyActionType::KA_KEY;
-      if (!obj["keyCodes"].isNull()) {
-        JsonArray keys = obj["keyCodes"].as<JsonArray>();
-        action.hid.num = min((int)keys.size(), MAX_KEY_KEYCODES);
-        for (int k=0; k<action.hid.num; k++) {
-          action.hid.key_codes[k] = keys[k].as<uint8_t>();
-        }
-        dirty = true;
-      }
-    }
-    else if (type=="mouse") {
-      action.type = keyActionType::KA_MOUSE;
-      if (obj["buttons"].is<uint8_t>()) {
-        action.mouse.buttons = obj["buttons"].as<uint8_t>();
-      }
-      else {
-        action.mouse.buttons = 0;
-      }
-      dirty = true;
-    }
-    else if (type=="gamepad") {
-      action.type = keyActionType::KA_GAMEPAD;
-      if (obj["buttons"].is<uint8_t>()) {
-        action.pad.buttons = obj["buttons"].as<uint8_t>();
-      }
-      else {
-        action.pad.buttons = 0;
-      }
-      dirty = true;
-    }
-    else if (type=="profile" && obj["name"].is<String>()) {
+    if (type=="profile" && obj["name"].is<String>()) {
       action.type = keyActionType::KA_PROFILE_CHANGE;
       action.profile = obj["name"].as<String>();
       dirty = true;
@@ -641,19 +583,6 @@ void HapticProfile::toJSON(JsonObject& doc){
     haptic["outputRamp"] = hmi_config.knob.values[i].haptic.output_ramp;
     haptic["detentStrength"] = hmi_config.knob.values[i].haptic.detent_strength;
     switch (hmi_config.knob.values[i].type) {
-      case knobValueType::KV_MIDI:
-        value["type"] = "midi";
-        value["channel"] = hmi_config.knob.values[i].midi.channel;
-        value["cc"] = hmi_config.knob.values[i].midi.cc;
-        break;
-      case knobValueType::KV_MOUSE:
-        value["type"] = "mouse";
-        value["axis"] = hmi_config.knob.values[i].mouse.axis;
-        break;
-      case knobValueType::KV_GAMEPAD:
-        value["type"] = "gamepad";
-        value["axis"] = hmi_config.knob.values[i].pad.axis;
-        break;
       case knobValueType::KV_ACTIONS:
         value["type"] = "actions";
         if (hmi_config.knob.values[i].actions.every.type!=keyActionType::KA_NONE) {
@@ -688,29 +617,6 @@ void HapticProfile::toJSON(JsonObject& doc){
 
 void HapticProfile::keyActionToJSON(JsonObject& obj, keyAction& action){
   switch (action.type) {
-    case keyActionType::KA_MIDI:
-      obj["type"] = "midi";
-      obj["channel"] = action.midi.channel;
-      obj["cc"] = action.midi.cc;
-      obj["val"] = action.midi.val;
-      break;
-    case keyActionType::KA_KEY:
-      {
-        obj["type"] = "key";
-        JsonArray keys = obj["keyCodes"].to<JsonArray>();
-        for (int i=0; i<action.hid.num; i++) {
-          keys.add(action.hid.key_codes[i]);
-        }
-      }
-      break;
-    case keyActionType::KA_MOUSE:
-      obj["type"] = "mouse";
-      obj["buttons"] = action.mouse.buttons;
-      break;
-    case keyActionType::KA_GAMEPAD:
-      obj["type"] = "gamepad";
-      obj["buttons"] = action.pad.buttons;
-      break;
     case keyActionType::KA_PROFILE_CHANGE:
       obj["type"] = "profiles";
       obj["name"] = action.profile;

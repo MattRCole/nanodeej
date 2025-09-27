@@ -9,30 +9,6 @@
 #define MAX_KEY_KEYCODES 6
 
 
-typedef struct  {
-    uint8_t channel;
-    uint8_t cc;
-    uint8_t val;
-} nanoMidiConfig;
-
-
-typedef struct {
-    uint8_t num;
-    uint8_t key_codes[MAX_KEY_KEYCODES];
-} nanoKeyboardConfig;
-
-
-typedef struct {
-    uint8_t buttons;
-    uint8_t axis;
-} nanoGamepadConfig;
-
-
-
-typedef struct {
-    uint8_t buttons;
-    uint8_t axis;
-} nanoMouseConfig;
 
 
 
@@ -42,10 +18,6 @@ typedef struct {
 
 typedef enum {
     KA_NONE = 0,
-    KA_KEY = 1,
-    KA_MIDI = 2,
-    KA_MOUSE = 3,
-    KA_GAMEPAD = 4,
     KA_PROFILE_CHANGE = 5,
     KA_PROFILE_NEXT = 6,
     KA_PROFILE_PREV = 7
@@ -54,12 +26,6 @@ typedef enum {
 
 typedef struct {
     keyActionType type;
-    union {
-        nanoMidiConfig midi;
-        nanoKeyboardConfig hid;
-        nanoMouseConfig mouse;
-        nanoGamepadConfig pad;
-    };
     String profile="";
 } keyAction;
 
@@ -76,11 +42,8 @@ typedef struct {
 
 
 typedef enum {
-    KV_MOUSE = 1,
-    KV_GAMEPAD = 2,
-    KV_MIDI = 3,
     KV_ACTIONS = 4,
-    KV_DEVICE_PROFILES = 5 
+    KV_DEVICE_PROFILES = 5
 } knobValueType;
 
 
@@ -118,11 +81,6 @@ typedef struct {
     //       of the value of maxExclusive, and there will be no dead zone as there is no gap between max and min angles
 
     DetentProfile haptic;
-    union {
-        nanoMouseConfig mouse;
-        nanoGamepadConfig pad;
-        nanoMidiConfig midi;
-    };
     knobActionsConfig actions;
 } knobValue;
 

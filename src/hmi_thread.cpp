@@ -1,33 +1,10 @@
 #include "hmi_thread.h"
 #include "com_thread.h"
 #include "foc_thread.h"
-#include <Adafruit_TinyUSB.h>
-#include "MIDI.h"
 #include "audio/audio.h"
 #include <SparkFun_STUSB4500.h>
 
 using namespace ace_button;
-
-Adafruit_USBD_MIDI usb_midi(1);
-
-MIDI_CREATE_INSTANCE(Adafruit_USBD_MIDI, usb_midi, midiu);
-MIDI_CREATE_INSTANCE(HardwareSerial, Serial2, midi2)
-
-enum {
-  RID_KEYBOARD = 1,
-  RID_MOUSE = 2,
-  RID_GAMEPAD = 3,
-};
-
-
-uint8_t const desc_hid_report[] = {
-  TUD_HID_REPORT_DESC_KEYBOARD( HID_REPORT_ID(RID_KEYBOARD) ),
-  TUD_HID_REPORT_DESC_MOUSE   ( HID_REPORT_ID(RID_MOUSE) ),
-  TUD_HID_REPORT_DESC_GAMEPAD( HID_REPORT_ID(RID_GAMEPAD) )
-};
-
-// USB HID object
-Adafruit_USBD_HID usb_hid;
 
 #define ARRAY_SIZE(arr) (sizeof(arr) / sizeof((arr)[0]))
 
@@ -44,24 +21,6 @@ HmiThread::~HmiThread() {}
 
 
 
-void midi_sysex_handler(byte* array, unsigned size) {
-    hmi_thread.handleSysex(array, size);
-};
-
-
-// init_usb() must be called before the thread is started
-void HmiThread::init_usb() {
-  usb_midi.setStringDescriptor("Nano_D MIDI");
-  midiu.setHandleSystemExclusive(midi_sysex_handler);
-  usb_midi.begin();
-  midiu.begin();
-
-  usb_hid.setBootProtocol(HID_ITF_PROTOCOL_NONE);
-  usb_hid.setPollInterval(2);
-  usb_hid.setReportDescriptor(desc_hid_report, sizeof(desc_hid_report));
-  usb_hid.setStringDescriptor("Nano_D HID");
-  usb_hid.begin();
-};
 
 
 // init must be called before the thread is started
@@ -71,12 +30,6 @@ void HmiThread::init(ledConfig& initial_led_config, hmiConfig& initial_hmi_confi
     led_max_brightness =  DeviceSettings::getInstance().ledMaxBrightness;
     uint8_t b = min(led_max_brightness, led_config.led_brightness);
     FastLED.setBrightness(b);
-    midi_sysex_id = DeviceSettings::getInstance().midi_sysex_id;
-    midiUsbSettings = DeviceSettings::getInstance().midiUsb;
-    midi2Settings = DeviceSettings::getInstance().midi2;
-    Serial2.begin(31250, SERIAL_8N1, PIN_SERIAL2_RX, PIN_SERIAL2_TX);
-    midi2.setHandleSystemExclusive(midi_sysex_handler);  
-    midi2.begin();
     audioPlayer.audio_init();
 };
 
@@ -117,19 +70,12 @@ void HmiThread::handleConfig() {
 void HmiThread::handleSettings() {
     HmiDeviceSettings newSettings;
     if (xQueueReceive(_q_settings_in, &newSettings, (TickType_t)0)) {
-        midiUsbSettings = newSettings.midiUsb;
-        midi2Settings = newSettings.midi2;
-        midiu.setThruFilterMode(midiUsbSettings.thru? midi::Thru::Full : midi::Thru::Off);
-        midiu.setInputChannel(midiUsbSettings.in? MIDI_CHANNEL_OMNI : MIDI_CHANNEL_OFF);
-        midi2.setThruFilterMode(midi2Settings.thru? midi::Thru::Full : midi::Thru::Off);
-        midi2.setInputChannel(midi2Settings.in? MIDI_CHANNEL_OMNI : MIDI_CHANNEL_OFF);
         led_max_brightness = newSettings.ledMaxBrightness;
         uint8_t newBrightness = min(newSettings.ledMaxBrightness, led_config.led_brightness);
         if (FastLED.getBrightness() != newBrightness) {
             FastLED.setBrightness(newBrightness);
             updateKeyLeds();
         }
-        midi_sysex_id = newSettings.midi_sysex_id;
         Serial.println("Hmi settings updated from global settings");
     }
 };
@@ -183,11 +129,9 @@ void HmiThread::run() {
     while (1) {
         handleSettings();
         handleConfig();
-        handleMidi();
         for (int i = 0; i < 4; i++)
             buttons[i]->check();
         updateValue();
-        handleHid();       
         updateLeds();
         unsigned long currentMillis = millis();
         static unsigned long previousMillis = 0;
@@ -245,41 +189,6 @@ void HmiThreadButtonHandler::handleEvent(AceButton* button, uint8_t eventType, u
 void HmiThread::handleKeyAction(keyAction& action, uint8_t eventType) {
     StringMessage msg;
     switch (action.type) {
-        case keyActionType::KA_MIDI:
-            if (eventType==AceButton::kEventPressed) {
-                if (midiUsbSettings.nano)
-                    midiu.sendControlChange(action.midi.cc, action.midi.val, action.midi.channel);
-                if (midi2Settings.nano)
-                    midi2.sendControlChange(action.midi.cc, action.midi.val, action.midi.channel);
-            }
-        break;
-        case keyActionType::KA_KEY:
-            if (num_key_codes<6 && eventType==AceButton::kEventPressed)
-                current_key_codes[num_key_codes++] = action.hid.key_codes[0];
-            else if (num_key_codes>0 && eventType==AceButton::kEventReleased) {
-                for (int i=0; i<num_key_codes; i++) {
-                    if (current_key_codes[i]==action.hid.key_codes[0]) {
-                        for (int j=i; j<num_key_codes-1; j++)
-                            current_key_codes[j] = current_key_codes[j+1];
-                        num_key_codes--;
-                        current_key_codes[num_key_codes] = 0;
-                        break;
-                    }
-                }
-            }
-        break;
-        case keyActionType::KA_MOUSE:
-            if (eventType==AceButton::kEventPressed)
-                current_mouse_buttons |= action.mouse.buttons;
-            else
-                current_mouse_buttons &= ~action.mouse.buttons;
-        break;
-        case keyActionType::KA_GAMEPAD:
-            if (eventType==AceButton::kEventPressed)
-                current_pad_buttons |= action.pad.buttons;
-            else
-                current_pad_buttons &= ~action.pad.buttons;
-        break;
         case keyActionType::KA_PROFILE_CHANGE:
             if (action.profile!="" && eventType==AceButton::kEventPressed) {
                 StringMessage msg(new String(action.profile), STRING_MESSAGE_PROFILE);
@@ -326,14 +235,7 @@ void HmiThread::updateValue() {
                 currentValue = value;
                 currentValue = foc_thread.pass_cur_pos(); // TODO fix and remove this in future
                 if (currentValue!=lastValue) {
-                    if (v.type==knobValueType::KV_MIDI) {
-                        uint8_t midi_value = (uint8_t)(currentValue);
-                        midi_value = _constrain(midi_value, 0, 127);
-                        if (midiUsbSettings.nano)
-                            midiu.sendControlChange(v.midi.cc, midi_value, v.midi.channel);
-                        if (midi2Settings.nano)
-                            midi2.sendControlChange(v.midi.cc, midi_value, v.midi.channel);
-                    }
+                    // No MIDI/HID output - value changes are only used internally
                     lastValue = currentValue;
                 }
             }
@@ -343,76 +245,9 @@ void HmiThread::updateValue() {
 
 
 
-void HmiThread::handleHid() {
-
-    bool keys_changed = (num_key_codes!=last_num_key_codes);
-    bool mouse_changed = (current_mouse_buttons!=last_mouse_buttons);
-    bool pad_changed = (current_pad_buttons!=last_pad_buttons);
-
-    if ( TinyUSBDevice.suspended() && (keys_changed||mouse_changed||pad_changed) ) {
-        TinyUSBDevice.remoteWakeup();
-    }
-
-    if (usb_hid.ready()) {
-        if (keys_changed) {
-            if (num_key_codes>0)
-                usb_hid.keyboardReport(RID_KEYBOARD, 0, current_key_codes);
-            else
-                usb_hid.keyboardRelease(RID_KEYBOARD);
-            last_num_key_codes = num_key_codes;
-        }
-        if (mouse_changed) {
-            usb_hid.mouseButtonPress(RID_MOUSE, current_mouse_buttons);
-            last_mouse_buttons = current_mouse_buttons;
-        }
-        if (pad_changed) {
-            hid_gamepad_report_t report = {
-                .x = 0,
-                .y = 0,
-                .z = 0,
-                .rz = 0,
-                .rx = 0,
-                .ry = 0,
-                .hat = 0,
-                .buttons = current_pad_buttons
-            };
-            usb_hid.sendReport(RID_GAMEPAD, &report, sizeof(report));
-            last_pad_buttons = current_pad_buttons;
-        }
-    }
-};
 
 
 
-void HmiThread::handleMidi() {
-    if (midiu.read()) {
-        midi::MidiType t = midiu.getType();
-        uint8_t d1 = midiu.getData1();
-        uint8_t d2 = midiu.getData2();
-        uint8_t c = midiu.getChannel();
-        if (midiUsbSettings.route && midi2Settings.out) {
-            midi2.send(t, d1, d2, c);        
-        }
-    }
-    if (midi2.read()) {
-        midi::MidiType t = midi2.getType();
-        uint8_t d1 = midi2.getData1();
-        uint8_t d2 = midi2.getData2();
-        uint8_t c = midi2.getChannel();
-        if (midi2Settings.route && midiUsbSettings.out) {
-            midiu.send(t, d1, d2, c);        
-        }
-    }
-};
-
-
-
-void HmiThread::handleSysex(byte* array, unsigned size){
-    if (array[0]==SYSEX_BINARIS_ID && array[1]==SYSEX_NANO_ID && array[2]==hmi_thread.midi_sysex_id) {
-        Serial.println("Received a sysex message");
-        // TODO handle sysex messages
-    }
-};
 
 
 

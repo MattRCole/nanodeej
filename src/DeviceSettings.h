@@ -3,16 +3,9 @@
 
 
 
-#include <ArduinoJSON.h>
+#include <ArduinoJson.h>
 
 
-typedef struct {
-    bool in = true;
-    bool out = true;
-    bool thru = false;
-    bool route = false;
-    bool nano = true;
-} midiSettings;
 
 
 typedef struct {
@@ -25,9 +18,6 @@ typedef struct {
 typedef struct {
     uint8_t ledMaxBrightness;
     uint16_t deviceOrientation;
-    midiSettings midiUsb;
-    midiSettings midi2;
-    uint8_t midi_sysex_id;
 } HmiDeviceSettings;
 
 
@@ -64,9 +54,6 @@ public:
     float maxVoltage;
     String deviceName;
     uint16_t deviceOrientation;
-    midiSettings midiUsb;
-    midiSettings midi2;
-    uint8_t midi_sysex_id;
     String wifiSsid;
     String wifiPassword;
     bool wifiEnabled;

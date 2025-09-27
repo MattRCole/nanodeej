@@ -31,13 +31,10 @@ DeviceSettings::DeviceSettings() {
     serialNumber = String(ESP.getEfuseMac(), HEX);
     deviceName = "Nano_" + serialNumber;
     firmwareVersion = String(NANO_FIRMWARE_VERSION);
-    midiUsb = midiSettings();
-    midi2 = midiSettings();
     dirty = true;
     wifiSsid = "";
     wifiPassword = "";
     wifiEnabled = false;
-    midi_sysex_id = 0x00;
     idleTimeout = 10000;
 };
 
@@ -66,34 +63,6 @@ DeviceSettings& DeviceSettings::operator=(JsonObject& obj){
         wifiPassword = obj["wifiPassword"].as<String>();
     if (obj["wifiEnabled"]!=nullptr)
         wifiEnabled = obj["wifiEnabled"].as<bool>();
-    if (obj["midiUsb"]!=nullptr) {
-        JsonObject midiUsbObj = obj["midiUsb"].as<JsonObject>();
-        if (midiUsbObj["in"]!=nullptr)
-            midiUsb.in = midiUsbObj["in"].as<bool>();
-        if (midiUsbObj["out"]!=nullptr)
-            midiUsb.out = midiUsbObj["out"].as<bool>();
-        if (midiUsbObj["thru"]!=nullptr)
-            midiUsb.thru = midiUsbObj["thru"].as<bool>();
-        if (midiUsbObj["route"]!=nullptr)
-            midiUsb.route = midiUsbObj["route"].as<bool>();
-        if (midiUsbObj["nano"]!=nullptr)
-            midiUsb.nano = midiUsbObj["nano"].as<bool>();
-    }
-    if (obj["midi2"]!=nullptr) {
-        JsonObject midi2Obj = obj["midi2"].as<JsonObject>();
-        if (midi2Obj["in"]!=nullptr)
-            midi2.in = midi2Obj["in"].as<bool>();
-        if (midi2Obj["out"]!=nullptr)
-            midi2.out = midi2Obj["out"].as<bool>();
-        if (midi2Obj["thru"]!=nullptr)
-            midi2.thru = midi2Obj["thru"].as<bool>();
-        if (midi2Obj["route"]!=nullptr)
-            midi2.route = midi2Obj["route"].as<bool>();
-        if (midi2Obj["nano"]!=nullptr)
-            midi2.nano = midi2Obj["nano"].as<bool>();
-    }
-    if (obj["sysexId"].is<uint8_t>())
-        midi_sysex_id = obj["sysexId"].as<uint8_t>();
     if (obj["idleTimeout"].is<uint32_t>())
         idleTimeout = obj["idleTimeout"].as<uint32_t>();
     dirty = true;
@@ -118,19 +87,6 @@ void DeviceSettings::toJSON(JsonObject& obj){
 
     obj["serialNumber"] = serialNumber;
     obj["firmwareVersion"] = firmwareVersion;
-    JsonObject midiUsbObj = obj["midiUsb"].to<JsonObject>();
-    midiUsbObj["in"] = midiUsb.in;
-    midiUsbObj["out"] = midiUsb.out;
-    midiUsbObj["thru"] = midiUsb.thru;
-    midiUsbObj["route"] = midiUsb.route;
-    midiUsbObj["nano"] = midiUsb.nano;
-    JsonObject midi2Obj = obj["midi2"].to<JsonObject>();
-    midi2Obj["in"] = midi2.in;
-    midi2Obj["out"] = midi2.out;
-    midi2Obj["thru"] = midi2.thru;
-    midi2Obj["route"] = midi2.route;
-    midi2Obj["nano"] = midi2.nano;
-    obj["sysexId"] = midi_sysex_id;
     obj["idleTimeout"] = idleTimeout;
 };
 
