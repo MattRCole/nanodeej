@@ -159,6 +159,7 @@ void FocThread::handleHapticConfig() {
     DetentProfile profile;
     if (xQueueReceive(_q_haptic_in, &profile, (TickType_t)0)) {
         // apply haptic config to motor
+        Serial.println("{\"type\":\"debug\",\"msg\":\"Switching haptic profiles\"}");
         haptic.haptic_state = HapticState(profile);
     }
 };

@@ -81,6 +81,7 @@ public:
     int size();
 
     HapticProfile* setCurrentProfile(String name);
+    HapticProfile* setCurrentProfileHardCode(HapticProfile *profile);
     HapticProfile* getCurrentProfile();
 
     String getNextProfileName();

@@ -11,6 +11,7 @@
 #include <Adafruit_TinyUSB.h>
 
 #include <SparkFun_STUSB4500.h>
+#include "default_profiles.h"
 
 FocThread foc_thread(1);
 HmiThread hmi_thread(0);
@@ -56,11 +57,18 @@ void setup() {
   // load current profile from Preferences
   String current_profile = settings.loadCurrentProfile();
   profileManager.setCurrentProfile(current_profile);
+  NanoProfiles::default_knob_mapping.num = 1;
+  NanoProfiles::default_knob_mapping.values[0] = NanoProfiles::default_knob_value;
+  NanoProfiles::default_haptic_profile.dirty = false;
+  NanoProfiles::default_haptic_profile.gui_enable = true;
+  NanoProfiles::default_haptic_profile.hmi_config = NanoProfiles::default_hmi_config;
+  NanoProfiles::default_haptic_profile.led_config = NanoProfiles::default_led_config;
+  NanoProfiles::default_haptic_profile.profile_name = "default-profile-yall";
+  NanoProfiles::default_haptic_profile.profile_tag = "Default Pro-file";
 
   // init threads
-  hmi_thread.init(profileManager.getCurrentProfile()->led_config, profileManager.getCurrentProfile()->hmi_config);
-  if (profileManager.getCurrentProfile()->hmi_config.knob.num > 0)
-    foc_thread.init(profileManager.getCurrentProfile()->hmi_config.knob.values[0].haptic);
+  hmi_thread.init(NanoProfiles::default_led_config, NanoProfiles::default_hmi_config);
+  foc_thread.init(NanoProfiles::default_knob_value.haptic);
 
   // start threads
   Serial.println("{\"type\":\"debug\",\"msg\":\"Starting threads...\"}");

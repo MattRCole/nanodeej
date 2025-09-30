@@ -6,6 +6,7 @@
 #include <esp_task_wdt.h>
 #include "./DeviceSettings.h"
 #include "./haptic.h"
+#include "default_profiles.h"
 
 
 
@@ -126,7 +127,7 @@ void ComThread::run() {
                 }
                 DeviceSettings::getInstance().fromSPIFFS();
                 HapticProfileManager::getInstance().fromSPIFFS();
-                HapticProfileManager::getInstance().setCurrentProfile(DeviceSettings::getInstance().loadCurrentProfile());
+                HapticProfileManager::getInstance().setCurrentProfileHardCode(&NanoProfiles::default_haptic_profile);
                 dispatchSettings();
                 dispatchHapticConfig();
                 dispatchLedConfig();
@@ -146,6 +147,7 @@ void ComThread::run() {
         unsigned long now = millis();
         if (now-ts>1000 && now-ts_last_activity>global_idle_timeout && global_idle_timeout>0) {
           ts = now;          
+          idleDoc["type"] = "debug";
           idleDoc["idle"] = now-ts_last_activity;
           serializeJson(idleDoc, Serial);
           Serial.println(); // add a newline

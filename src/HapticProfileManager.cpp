@@ -2,6 +2,7 @@
 #include "./HapticProfileManager.h"
 #include "./DeviceSettings.h"
 #include "SPIFFS.h"
+#include "default_profiles.h"
 
 #include "class/hid/hid.h"
 
@@ -93,6 +94,12 @@ int HapticProfileManager::size() {
 
 
 
+HapticProfile* HapticProfileManager::setCurrentProfileHardCode(HapticProfile* profile){
+  if (profile!=nullptr) {
+    current_profile = profile;
+  }
+  return current_profile;
+};
 
 
 HapticProfile* HapticProfileManager::setCurrentProfile(String name){
@@ -166,7 +173,7 @@ void HapticProfileManager::fromSPIFFS() {
   // load profiles from SPIFFS
   int count = 0;
   File dir = SPIFFS.open(PROFILES_DIRECTORY, "r");
-  if (dir) {
+  if (dir && false) {
     File file = dir.openNextFile();
     while (file) {
       if (!file.isDirectory() && String(file.name()).endsWith(".json")) {
@@ -184,7 +191,7 @@ void HapticProfileManager::fromSPIFFS() {
           else {
             HapticProfile* profile = add(doc["name"].as<String>());
             if (profile!=nullptr) {
-              Serial.print("{\"type\":\"debug\",\"msg\":\"Added profile: \"}");
+              Serial.print("{\"type\":\"debug\",\"msg\":\"Added profile: ");
               Serial.print(profile->profile_name);
               Serial.println("\"}");
               JsonObject obj = doc.as<JsonObject>();
@@ -209,41 +216,8 @@ void HapticProfileManager::fromSPIFFS() {
     dir.close();
   }
   if (count==0) {
-    Serial.println("{\"type\":\"debug\",\"msg\":\"No profiles found.\"}");
-    // add a default profile
-    HapticProfile* profile = add("Default Profile"); // structs are initialized with default values
-    if (profile!=nullptr) {
-      Serial.println("{\"type\":\"debug\",\"msg\":\"Added profile " + profile->profile_name + "\"}");
-      // only for the default profile, set a default key-mapping
-      profile->hmi_config.keys[0].num_pressed_actions = 1;
-      profile->hmi_config.keys[0].pressed[0].type = keyActionType::KA_PROFILE_NEXT;
-      profile->hmi_config.keys[1].num_pressed_actions = 0;
-      profile->hmi_config.keys[2].num_pressed_actions = 0;
-      profile->hmi_config.keys[3].num_pressed_actions = 1;
-      profile->hmi_config.keys[3].pressed[0].type = keyActionType::KA_PROFILE_PREV;
-      profile->dirty = true;
-      profile->hmi_config.knob.num = 1;
-      profile->hmi_config.knob.values[0].type = knobValueType::KV_ACTIONS;
-      profile->hmi_config.knob.values[0].value_min = 0;
-      profile->hmi_config.knob.values[0].value_max = 127;
-      profile->hmi_config.knob.values[0].angle_min = 0;
-      profile->hmi_config.knob.values[0].angle_max = _2PI;
-      profile->hmi_config.knob.values[0].wrap = false;
-      profile->hmi_config.knob.values[0].step = 1;
-      profile->hmi_config.knob.values[0].haptic.mode = HapticMode::REGULAR;
-      profile->hmi_config.knob.values[0].haptic.detent_count = 127;
-      profile->hmi_config.knob.values[0].haptic.start_pos = 0;
-      profile->hmi_config.knob.values[0].haptic.end_pos = 127;
-      profile->hmi_config.knob.values[0].haptic.vernier = 5;
-      profile->hmi_config.knob.values[0].haptic.output_ramp = 5000.0f;
-      profile->hmi_config.knob.values[0].haptic.detent_strength = 3.0f;
-      profile->hmi_config.knob.values[0].haptic.kxForce = true;
-      current_profile = profile;
-    }
-    else {
-      Serial.println("{\"type\":\"debug\",\"msg\":\"FATAL: Failed to add default profile.\"}");
-      while (1);
-    }
+    Serial.println("{\"type\":\"debug\",\"msg\":\"No profiles found. Loading default profile\"}");
+    current_profile = &NanoProfiles::default_haptic_profile;
   }
   else {
     Serial.print("{\"type\":\"debug\",\"msg\":\"");
