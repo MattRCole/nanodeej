@@ -3,12 +3,20 @@
 #include "hmi_api.h"
 #include "HapticProfileManager.h"
 
-namespace NanoProfiles {
+namespace NanoProfiles
+{
 
-  extern ledConfig default_led_config;
-  extern knobValue default_knob_value;
-  extern knobMapping default_knob_mapping;
-  extern hmiConfig default_hmi_config;
+    extern ledConfig default_led_config;
+    extern knobValue default_knob_value;
+    extern knobMapping default_knob_mapping;
+    extern hmiConfig default_hmi_config;
 
-  extern HapticProfile default_haptic_profile;
+    extern HapticProfile default_haptic_profile;
+    typedef struct
+    {
+        String type;
+        String title;
+    } appStringInfo;
+
+    extern appStringInfo apps[];
 };

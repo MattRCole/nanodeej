@@ -37,6 +37,7 @@ class ComThread : public Thread<ComThread> {
         
         bool global_sleep_flag = false;
         unsigned long ts_last_activity;
+        uint8_t lastApp = 0;
         uint32_t global_idle_timeout = 5000;
 
     protected:

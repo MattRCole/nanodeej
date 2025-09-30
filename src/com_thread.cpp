@@ -104,8 +104,18 @@ void ComThread::handleEvents() {
         eventDoc["ks"] = keyState;
         if (keyEvt.type==0) // AceButton::kEventPressed
           eventDoc["kd"] = keyEvt.keyNum;
-        else if (keyEvt.type==1) // AceButton::kEventReleased
+        else if (keyEvt.type==1) {// AceButton::kEventReleased
           eventDoc["ku"] = keyEvt.keyNum;
+          if (keyEvt.keyNum != lastApp) {
+            NanoProfiles::appStringInfo& appInfo = NanoProfiles::apps[keyEvt.keyNum];
+            LcdCommand cmd;
+            cmd.type = LCD_LAYOUT_DEFAULT;
+            cmd.title = &appInfo.title;
+            cmd.data1 = &appInfo.type;
+            lastApp = keyEvt.keyNum;
+            lcd_thread.put_lcd_command(cmd);
+          }
+        }
         serializeJson(eventDoc, Serial);
         Serial.println(); // add a newline
         ts_last_activity = millis();
@@ -414,17 +424,14 @@ String ComThread::generateDescription(HapticProfile& curr) {
   return desc;
 };
 
+
 void ComThread::dispatchLcdConfig() {
-    HapticProfile* curr = HapticProfileManager::getInstance().getCurrentProfile();
+    Serial.printf("lastApp: %d\n", lastApp);
+    NanoProfiles::appStringInfo &appInfo = NanoProfiles::apps[lastApp];
     LcdCommand cmd;
     cmd.type = LCD_LAYOUT_DEFAULT;
-    cmd.title = &curr->profile_name;
-    if (curr->profile_desc.length()>0)
-      cmd.data1 = &curr->profile_desc;
-    else {
-      autoDescription = generateDescription(*curr);
-      cmd.data1 = &autoDescription;
-    }
+    cmd.title = &appInfo.title;
+    cmd.data1 = &appInfo.type;
     cmd.data2 = nullptr;
     cmd.data3 = nullptr;
     cmd.data4 = nullptr;
