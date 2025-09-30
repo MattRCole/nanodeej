@@ -40,10 +40,10 @@ typedef struct {
     uint32_t primary_col = 0x08596C;
     uint32_t secondary_col = 0x47040D;
 
-    uint32_t button_A_col_idle = 0x08596C; 
-    uint32_t button_B_col_idle = 0x1A2E52; 
-    uint32_t button_C_col_idle = 0x200524; 
-    uint32_t button_D_col_idle = 0x47040D; 
+    uint32_t button_A_col_idle = 0x08596C;
+    uint32_t button_B_col_idle = 0x1A2E52;
+    uint32_t button_C_col_idle = 0x200524;
+    uint32_t button_D_col_idle = 0x47040D;
 
     uint32_t button_A_col_press = 0xFFFFFF;
     uint32_t button_B_col_press = 0xFFFFFF;
