@@ -20,6 +20,17 @@ ComThread com_thread(0);
 
 STUSB4500 usb;
 
+void setupDefaultProfiles() {
+  NanoProfiles::default_knob_mapping.num = 1;
+  NanoProfiles::default_haptic_profile.hmi_config = NanoProfiles::default_hmi_config;
+  NanoProfiles::default_knob_mapping.values[0] = NanoProfiles::default_knob_value;
+  NanoProfiles::default_haptic_profile.dirty = false;
+  NanoProfiles::default_haptic_profile.gui_enable = true;
+  NanoProfiles::default_haptic_profile.led_config = NanoProfiles::default_led_config;
+  NanoProfiles::default_haptic_profile.profile_name = "Default Profile";
+  NanoProfiles::default_haptic_profile.profile_tag = "default-profile";
+  NanoProfiles::default_haptic_profile.profile_desc = "2 kool 4 skool";
+}
 
 void setup() {
 
@@ -33,7 +44,7 @@ void setup() {
   Serial.begin(DEFAULT_SERIAL_SPEED);
 
   delay(100);
-  Serial.println("{\"type\":\"debug\",\"msg\":\"Welcome to Nano_D++!\"}");
+  Serial.println("{\"type\":\"debug\",\"msg\":\"Welcome to Nano_Deej!\"}");
   Serial.print("{\"type\":\"debug\",\"msg\":\"Firmware version: ");
   Serial.print(NANO_FIRMWARE_VERSION);
   Serial.println("\"}");
@@ -57,14 +68,8 @@ void setup() {
   // load current profile from Preferences
   String current_profile = settings.loadCurrentProfile();
   profileManager.setCurrentProfile(current_profile);
-  NanoProfiles::default_knob_mapping.num = 1;
-  NanoProfiles::default_knob_mapping.values[0] = NanoProfiles::default_knob_value;
-  NanoProfiles::default_haptic_profile.dirty = false;
-  NanoProfiles::default_haptic_profile.gui_enable = true;
-  NanoProfiles::default_haptic_profile.hmi_config = NanoProfiles::default_hmi_config;
-  NanoProfiles::default_haptic_profile.led_config = NanoProfiles::default_led_config;
-  NanoProfiles::default_haptic_profile.profile_name = "default-profile-yall";
-  NanoProfiles::default_haptic_profile.profile_tag = "Default Pro-file";
+
+  setupDefaultProfiles();
 
   // init threads
   hmi_thread.init(NanoProfiles::default_led_config, NanoProfiles::default_hmi_config);

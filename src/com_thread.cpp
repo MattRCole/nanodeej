@@ -7,6 +7,7 @@
 #include "./DeviceSettings.h"
 #include "./haptic.h"
 #include "default_profiles.h"
+#include "utils.h"
 
 
 
@@ -174,7 +175,10 @@ void ComThread::handleEvents() {
       hadEvent = hmi_thread.get_key_event(&keyEvt);
       if (hadEvent) {
         eventDoc.clear();
-        eventDoc["ks"] = keyEvt.keyState;
+        eventDoc["type"] = "debug";
+        char keyState[11]; // More than enough to hold 8 bytes of data
+        sprintf(keyState, BYTE_TO_BINARY_PATTERN, BYTE_TO_BINARY(keyEvt.keyState));
+        eventDoc["ks"] = keyState;
         if (keyEvt.type==0) // AceButton::kEventPressed
           eventDoc["kd"] = keyEvt.keyNum;
         else if (keyEvt.type==1) // AceButton::kEventReleased
@@ -450,7 +454,7 @@ void ComThread::dispatchHmiConfig() {
 
 void ComThread::dispatchHapticConfig() {
   if (HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.num>0)
-    foc_thread.put_haptic_config(HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.values[0].haptic);
+    foc_thread.put_haptic_config(NanoProfiles::default_knob_value.haptic);
 };
 
 void ComThread::dispatchSettings() {

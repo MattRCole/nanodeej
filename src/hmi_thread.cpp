@@ -154,16 +154,12 @@ void HmiThreadButtonHandler::handleEvent(AceButton* button, uint8_t eventType, u
     switch (eventType) {
         case AceButton::kEventPressed:
             hmi_thread.keyState |= (1<<index);
-            Serial.printf("{\"type\":\"debug\",\"keyState\": \""BYTE_TO_BINARY_PATTERN"\"}", BYTE_TO_BINARY(hmi_thread.keyState));
-            Serial.println();
             for (int i=0; i<hmi_thread.hmi_config.keys[index].num_pressed_actions; i++) {
                 hmi_thread.handleKeyAction(hmi_thread.hmi_config.keys[index].pressed[i], eventType);
             }
         break;
         case AceButton::kEventReleased:
             hmi_thread.keyState &= ~(1<<index);
-            Serial.printf("{\"type\":\"debug\",\"keyState\": \""BYTE_TO_BINARY_PATTERN"\"}", BYTE_TO_BINARY(hmi_thread.keyState));
-            Serial.println();
             for (int i=0; i<hmi_thread.hmi_config.keys[index].num_pressed_actions; i++) {
                 hmi_thread.handleKeyAction(hmi_thread.hmi_config.keys[index].pressed[i], eventType);
             }            
