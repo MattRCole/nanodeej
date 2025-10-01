@@ -107,13 +107,19 @@ void ComThread::handleEvents() {
         else if (keyEvt.type==1) {// AceButton::kEventReleased
           eventDoc["ku"] = keyEvt.keyNum;
           if (keyEvt.keyNum != lastApp) {
-            NanoProfiles::appStringInfo& appInfo = NanoProfiles::apps[keyEvt.keyNum];
+            NanoProfiles::devAppInfo& appInfo = NanoProfiles::apps[keyEvt.keyNum];
             LcdCommand cmd;
             cmd.type = LCD_LAYOUT_DEFAULT;
             cmd.title = &appInfo.title;
             cmd.data1 = &appInfo.type;
-            lastApp = keyEvt.keyNum;
             lcd_thread.put_lcd_command(cmd);
+
+            HapticProfileUpdate haptic_config;
+            haptic_config.profile = NanoProfiles::default_knob_value.haptic;
+            haptic_config.position = appInfo.volume;
+            foc_thread.put_haptic_config(haptic_config);
+
+            lastApp = keyEvt.keyNum;
           }
         }
         serializeJson(eventDoc, Serial);
@@ -122,15 +128,16 @@ void ComThread::handleEvents() {
       }
     } while (hadEvent);
     do {
-      AngleEvt angleEvt;
-      hadEvent = foc_thread.get_angle_event(&angleEvt);
-      if (hadEvent) {
+        AngleEvt angleEvt;
+        hadEvent = foc_thread.get_angle_event(&angleEvt);
+        if (!hadEvent) continue;
         eventDoc.clear();
-        eventDoc["p"] = angleEvt.cur_pos;
+        eventDoc["volume"] = angleEvt.cur_pos;
+        eventDoc["app"] = NanoProfiles::apps[lastApp].title;
+        NanoProfiles::apps[lastApp].volume = angleEvt.cur_pos;
         serializeJson(eventDoc, Serial);
         Serial.println(); // add a newline
         ts_last_activity = millis();
-      }
     } while (hadEvent);
 };
 
@@ -386,8 +393,13 @@ void ComThread::dispatchHmiConfig() {
 };
 
 void ComThread::dispatchHapticConfig() {
-  if (HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.num>0)
-    foc_thread.put_haptic_config(NanoProfiles::default_knob_value.haptic);
+  if (HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.num>0) {
+    HapticProfileUpdate haptic_config;
+    haptic_config.profile = NanoProfiles::default_knob_value.haptic;
+    haptic_config.position = NanoProfiles::apps[lastApp].volume;
+    foc_thread.put_haptic_config(haptic_config);
+  }
+
 };
 
 void ComThread::dispatchSettings() {
@@ -427,7 +439,7 @@ String ComThread::generateDescription(HapticProfile& curr) {
 
 void ComThread::dispatchLcdConfig() {
     Serial.printf("lastApp: %d\n", lastApp);
-    NanoProfiles::appStringInfo &appInfo = NanoProfiles::apps[lastApp];
+    NanoProfiles::devAppInfo &appInfo = NanoProfiles::apps[lastApp];
     LcdCommand cmd;
     cmd.type = LCD_LAYOUT_DEFAULT;
     cmd.title = &appInfo.title;

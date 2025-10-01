@@ -16,7 +16,9 @@ namespace NanoProfiles
     {
         String type;
         String title;
-    } appStringInfo;
+        uint16_t volume;
+        uint16_t volumeMax;
+    } devAppInfo;
 
-    extern appStringInfo apps[];
+    extern devAppInfo apps[];
 };

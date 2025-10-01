@@ -32,10 +32,10 @@ namespace NanoProfiles {
     HapticProfile default_haptic_profile{};
 
 
-    appStringInfo apps[4] = {
-        {.type="Application", .title="Spotify"},
-        {.type="Application", .title="Chrome"},
-        {.type="Application", .title="Discord"},
-        {.type="Output Device", .title="Speakers"}
+    devAppInfo apps[4] = {
+        {.type="Application", .title="Spotify", .volume=0, .volumeMax=100},
+        {.type="Application", .title="Chrome", .volume=0, .volumeMax=100},
+        {.type="Application", .title="Discord", .volume=0, .volumeMax=100},
+        {.type="Output Device", .title="Speakers", .volume=0, .volumeMax=100}
     };
 };

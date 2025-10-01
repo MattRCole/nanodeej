@@ -23,7 +23,7 @@ HapticCommander commander = HapticCommander(&motor);
 
 FocThread::FocThread(const uint8_t task_core) : Thread("FOC", 8192, 1, task_core) {
     _q_motor_in = xQueueCreate(5, sizeof( String* ));
-    _q_haptic_in = xQueueCreate(2, sizeof( DetentProfile ));
+    _q_haptic_in = xQueueCreate(2, sizeof( HapticProfileUpdate ));
     _q_angleevt_out = xQueueCreate(5, sizeof( AngleEvt ));
     assert(_q_motor_in != NULL);
     assert(_q_haptic_in != NULL);
@@ -94,7 +94,7 @@ void FocThread::put_motor_command(String* message) {
 };
 
 
-void FocThread::put_haptic_config(DetentProfile& profile) {
+void FocThread::put_haptic_config(HapticProfileUpdate& profile) {
     xQueueSend(_q_haptic_in, &profile, (TickType_t)0);
 };
 
@@ -156,11 +156,11 @@ void FocThread::handleMessage() {
 
 
 void FocThread::handleHapticConfig() {
-    DetentProfile profile;
-    if (xQueueReceive(_q_haptic_in, &profile, (TickType_t)0)) {
+    HapticProfileUpdate profile_update;
+    if (xQueueReceive(_q_haptic_in, &profile_update, (TickType_t)0)) {
         // apply haptic config to motor
         Serial.println("{\"type\":\"debug\",\"msg\":\"Switching haptic profiles\"}");
-        haptic.haptic_state = HapticState(profile);
+        haptic.haptic_state.load_profile(profile_update.profile, profile_update.position);
     }
 };
 

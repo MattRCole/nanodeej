@@ -7,6 +7,12 @@
 #include "DeviceSettings.h"
 
 
+typedef struct {
+    DetentProfile profile;
+    uint16_t position = 0xFFFF;
+} HapticProfileUpdate;
+
+
 class FocThread : public Thread<FocThread> {
     friend class Thread<FocThread>; //Allow Base Thread to invoke protected run()
     friend class HapticInterface;
@@ -18,7 +24,7 @@ class FocThread : public Thread<FocThread> {
         void init(DetentProfile& initialConfig);
 
         void put_motor_command(String* msg);
-        void put_haptic_config(DetentProfile& profile);
+        void put_haptic_config(HapticProfileUpdate& profile);
         bool get_angle_event(AngleEvt* evt);
     
 
