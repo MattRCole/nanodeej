@@ -25,9 +25,11 @@ FocThread::FocThread(const uint8_t task_core) : Thread("FOC", 8192, 1, task_core
     _q_motor_in = xQueueCreate(5, sizeof( String* ));
     _q_haptic_in = xQueueCreate(2, sizeof( HapticProfileUpdate ));
     _q_angleevt_out = xQueueCreate(5, sizeof( AngleEvt ));
+    _q_position_in = xQueueCreate(5, sizeof( uint16_t ));
     assert(_q_motor_in != NULL);
     assert(_q_haptic_in != NULL);
     assert(_q_angleevt_out != NULL);
+    assert(_q_position_in != NULL);
 }
 
 FocThread::~FocThread() {}
@@ -80,12 +82,12 @@ void FocThread::run() {
             xQueueSend(_q_angleevt_out, &ae, (TickType_t)0);
             serial_last_pos = haptic.haptic_state.current_pos;
         }
-        
-        
+
+
         handleMessage();
         handleHapticConfig();
+        handleNewPosition();
     }
-        
 };
 
 void FocThread::put_motor_command(String* message) {
@@ -98,6 +100,10 @@ void FocThread::put_haptic_config(HapticProfileUpdate& profile) {
     xQueueSend(_q_haptic_in, &profile, (TickType_t)0);
 };
 
+
+void FocThread::put_new_position(uint16_t &position) {
+    xQueueSend(_q_position_in, &position, (TickType_t)0);
+};
 
 
 
@@ -165,11 +171,16 @@ void FocThread::handleHapticConfig() {
 };
 
 
+void FocThread::handleNewPosition() {
+    uint16_t position;
+    if (xQueueReceive(_q_position_in, &position, (TickType_t)0)) {
+        haptic.haptic_state.current_pos = position;
+        haptic.haptic_state.last_pos = position;
+    }
+};
+
 
 void FocThread::setCalibration(MotorCalibration& cal){
     haptic.motor->zero_electric_angle = cal.zero_angle;
     haptic.motor->sensor_direction = cal.direction==0 ? Direction::UNKNOWN : ( cal.direction==1 ? Direction::CW : Direction::CCW);
 };
-
-
-

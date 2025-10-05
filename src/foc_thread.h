@@ -25,6 +25,7 @@ class FocThread : public Thread<FocThread> {
 
         void put_motor_command(String* msg);
         void put_haptic_config(HapticProfileUpdate& profile);
+        void put_new_position(uint16_t &position);
         bool get_angle_event(AngleEvt* evt);
     
 
@@ -43,6 +44,7 @@ class FocThread : public Thread<FocThread> {
         void run();
         void handleMessage();
         void handleHapticConfig();
+        void handleNewPosition();
 
         float angleEventMinAngle = 0.017453292519943f; // 1° in radians
         uint32_t angleEventMinMicroseconds = 10000; // 100Hz
@@ -50,6 +52,7 @@ class FocThread : public Thread<FocThread> {
     private:
         QueueHandle_t _q_motor_in;
         QueueHandle_t _q_haptic_in;
+        QueueHandle_t _q_position_in;
         QueueHandle_t _q_angleevt_out;
 };
 

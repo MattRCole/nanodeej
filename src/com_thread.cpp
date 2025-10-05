@@ -58,6 +58,9 @@ void ComThread::run() {
                 sendError("JSON parse error", error.c_str());
                 continue;
             }
+            if (doc["type"].as<String>() == "app-dev-config") {
+              handleAppDevConfigCommand(doc["info"]);
+            }
             ts_last_activity = millis();
         }
 
@@ -88,7 +91,27 @@ void ComThread::run() {
 
 
 void ComThread::handleAppDevConfigCommand(JsonVariant info) {
-
+    JsonArray appDevList = info.as<JsonArray>();
+    for(JsonVariant v : appDevList) {
+        JsonObject incomingInfo = v.as<JsonObject>();
+        String appDevId = incomingInfo["id"].as<String>();
+        // For now: we're not adding apps.
+        auto dev = NanoProfiles::app_map.find(appDevId);
+        if (dev != NanoProfiles::app_map.end()) {
+            NanoProfiles::devAppInfo& appInfo = *dev->second;
+            uint16_t volume = incomingInfo["currentDetent"].as<uint16_t>();
+            if (appInfo.volume != volume) {
+                appInfo.volume = volume;
+                if (appInfo.id == NanoProfiles::apps[lastApp].id) {
+                    foc_thread.put_new_position(volume);
+                }
+            }
+        } else {
+            String devInfo;
+            serializeJson(incomingInfo, devInfo);
+            Serial.printf("{\"type\":\"debug\",\"msg\":\"Adding new app/devs is not yet supported.\",\"device-info\":%s}\n", devInfo.c_str());
+        }
+    }
 };
 
 

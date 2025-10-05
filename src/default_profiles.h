@@ -1,6 +1,7 @@
 #pragma once
 #include "led_api.h"
 #include "hmi_api.h"
+#include <map>
 #include "HapticProfileManager.h"
 
 namespace NanoProfiles
@@ -19,7 +20,9 @@ namespace NanoProfiles
         String title;
         uint16_t volume;
         uint16_t volumeMax;
+        int8_t mappedKey;
     } devAppInfo;
 
     extern devAppInfo apps[];
+    extern std::map<String, devAppInfo *> app_map;
 };

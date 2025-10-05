@@ -33,9 +33,16 @@ namespace NanoProfiles {
 
 
     devAppInfo apps[4] = {
-        {.type="application", .id="spotify", .title="Spotify", .volume=0, .volumeMax=100},
-        {.type="application", .id="chrome", .title="Chrome", .volume=0, .volumeMax=100},
-        {.type="application", .id="discord", .title="Discord", .volume=0, .volumeMax=100},
-        {.type="output-device", .id="speakers", .title="Speakers", .volume=0, .volumeMax=100}
+        {.type="application", .id="spotify", .title="Spotify", .volume=0, .volumeMax=100, .mappedKey=0},
+        {.type="application", .id="chrome", .title="Chrome", .volume=0, .volumeMax=100, .mappedKey=1},
+        {.type="application", .id="discord", .title="Discord", .volume=0, .volumeMax=100, .mappedKey=2},
+        {.type="output-device", .id="speakers", .title="Speakers", .volume=0, .volumeMax=100, .mappedKey=3}
+    };
+
+    std::map<String, devAppInfo *> app_map = {
+        { "spotify", &(apps[0]) },
+        { "chrome", &(apps[1]) },
+        { "discord", &(apps[2]) },
+        { "speakers", &(apps[3]) }
     };
 };
