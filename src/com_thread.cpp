@@ -48,6 +48,7 @@ void ComThread::run() {
     remoteLcdCommand.data4 = &data4;
     dispatchSettings();
     dispatchLcdConfig();
+    dispatchLedConfig();
     while (true) {
         JsonDocument doc;
         if (Serial.available()) {
@@ -146,6 +147,13 @@ void ComThread::handleEvents() {
             haptic_config.profile = NanoProfiles::default_knob_value.haptic;
             haptic_config.position = appInfo.volume;
             foc_thread.put_haptic_config(haptic_config);
+
+            ledConfig current_led_config = HapticProfileManager::getInstance().getCurrentProfile()->led_config;
+
+            current_led_config.primary_col = APP_DEV_WITH_DEFAULT(appInfo, ringPrimary);
+            current_led_config.secondary_col = APP_DEV_WITH_DEFAULT(appInfo, ringSecondary);
+            current_led_config.pointer_col = APP_DEV_WITH_DEFAULT(appInfo, ringPointer);
+            hmi_thread.put_led_config(current_led_config);
 
             lastApp = keyEvt.keyNum;
           }
@@ -359,11 +367,17 @@ void ComThread::setCurrentProfile(String name){
 
 
 void ComThread::dispatchLedConfig() {
-    ledConfig copy = HapticProfileManager::getInstance().getCurrentProfile()->led_config;
-    if (copy.led_brightness>DeviceSettings::getInstance().ledMaxBrightness)
-      copy.led_brightness = DeviceSettings::getInstance().ledMaxBrightness;
-    hmi_thread.put_led_config(copy);
-    //hmi_thread.put_key_config(HapticProfileManager::getInstance().getCurrentProfile()->key_config);
+    ledConfig config;
+    config.button_A_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[0], keyColor);
+    config.button_B_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[1], keyColor);
+    config.button_C_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[2], keyColor);
+    config.button_D_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[3], keyColor);
+    config.pointer_col = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[lastApp], ringPointer);
+    config.primary_col = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[lastApp], ringPrimary);
+    config.secondary_col = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[lastApp], ringSecondary);
+    if (config.led_brightness>DeviceSettings::getInstance().ledMaxBrightness)
+      config.led_brightness = DeviceSettings::getInstance().ledMaxBrightness;
+    hmi_thread.put_led_config(config);
 };
 
 
@@ -417,7 +431,6 @@ String ComThread::generateDescription(HapticProfile& curr) {
 
 
 void ComThread::dispatchLcdConfig() {
-    Serial.printf("lastApp: %d\n", lastApp);
     NanoProfiles::devAppInfo &appInfo = NanoProfiles::apps[lastApp];
     LcdCommand cmd;
     cmd.type = LCD_LAYOUT_DEFAULT;
