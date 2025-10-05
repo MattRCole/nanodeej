@@ -33,9 +33,9 @@ namespace NanoProfiles {
 
 
     devAppInfo apps[4] = {
-        {.type="Application", .title="Spotify", .volume=0, .volumeMax=100},
-        {.type="Application", .title="Chrome", .volume=0, .volumeMax=100},
-        {.type="Application", .title="Discord", .volume=0, .volumeMax=100},
-        {.type="Output Device", .title="Speakers", .volume=0, .volumeMax=100}
+        {.type="application", .id="spotify", .title="Spotify", .volume=0, .volumeMax=100},
+        {.type="application", .id="chrome", .title="Chrome", .volume=0, .volumeMax=100},
+        {.type="application", .id="discord", .title="Discord", .volume=0, .volumeMax=100},
+        {.type="output-device", .id="speakers", .title="Speakers", .volume=0, .volumeMax=100}
     };
 };

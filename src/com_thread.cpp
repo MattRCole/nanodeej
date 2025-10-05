@@ -87,6 +87,11 @@ void ComThread::run() {
 };
 
 
+void ComThread::handleAppDevConfigCommand(JsonVariant info) {
+
+};
+
+
 
 
 
@@ -129,11 +134,14 @@ void ComThread::handleEvents() {
     } while (hadEvent);
     do {
         AngleEvt angleEvt;
+        NanoProfiles::devAppInfo &appInfo = NanoProfiles::apps[lastApp];
         hadEvent = foc_thread.get_angle_event(&angleEvt);
         if (!hadEvent) continue;
         eventDoc.clear();
-        eventDoc["volume"] = angleEvt.cur_pos;
-        eventDoc["app"] = NanoProfiles::apps[lastApp].title;
+        eventDoc["type"] = "volume-update";
+        eventDoc["absolute"] = angleEvt.cur_pos;
+        eventDoc["id"] = NanoProfiles::apps[lastApp].id;
+        eventDoc["delta"] = (int16_t)(angleEvt.cur_pos - appInfo.volume);
         NanoProfiles::apps[lastApp].volume = angleEvt.cur_pos;
         serializeJson(eventDoc, Serial);
         Serial.println(); // add a newline
@@ -231,8 +239,6 @@ void ComThread::handleMessages() {
 };
 
 
-
-
 void ComThread::handleProfilesCommand(JsonVariant p) {
   if (p.isNull()) return;
   HapticProfileManager& pm = HapticProfileManager::getInstance();
@@ -316,56 +322,6 @@ void ComThread::sendError(const char* error, const char* msg) {
   }
 };
 
-
-
-void ComThread::handleProfileCommand(JsonVariant profile, JsonVariant updates) {
-  if (profile.isNull()&&updates.isNull()) return;
-  HapticProfileManager& pm = HapticProfileManager::getInstance();
-  HapticProfile* p;
-  if (profile.is<String>()) {
-    String pname = profile.as<String>();
-    if (!isProfileNameOk(pname)) {
-      sendError("Invalid profile name", pname);
-      return;
-    }
-    p = pm[pname];
-    if (p==nullptr) 
-      p = pm.add(pname);
-    if (p==nullptr) {
-      sendError("Cannot add another profile");
-      return;
-    }
-  }
-  else 
-    p = pm.getCurrentProfile();
-
-  if (updates.isNull()) {
-    JsonDocument doc, profileDoc;
-    // send the selected profile
-    JsonObject obj = doc["profile"].to<JsonObject>();
-    p->toJSON(obj);
-    serializeJson(doc, Serial);
-    Serial.println(); // add a newline
-  }
-  else if (updates.is<JsonObject>()) {
-    JsonObject obj = updates.as<JsonObject>();
-    if (obj["name"].is<String>() && obj["name"].as<String>()!=p->profile_name) {
-      String new_name = obj["name"].as<String>();
-      if (pm[new_name]!=nullptr) {
-        sendError("Profile name already exists");
-        return;
-      }
-    }
-    // update the profile
-    *p = obj; // assigning the JSON object to the profile will update the profile's fields
-    if (p==pm.getCurrentProfile()) {
-      dispatchHapticConfig();
-      dispatchLedConfig();
-      dispatchHmiConfig();
-      dispatchLcdConfig();
-    }
-  }
-};
 
 
 void ComThread::setCurrentProfile(String name){

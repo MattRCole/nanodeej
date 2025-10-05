@@ -15,6 +15,7 @@ namespace NanoProfiles
     typedef struct
     {
         String type;
+        String id;
         String title;
         uint16_t volume;
         uint16_t volumeMax;
