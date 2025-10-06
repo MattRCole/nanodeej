@@ -94,13 +94,13 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
         JsonObject incomingInfo = v.as<JsonObject>();
         String appDevId = incomingInfo["id"].as<String>();
         // For now: we're not adding apps.
-        auto dev = NanoProfiles::app_map.find(appDevId);
-        if (dev != NanoProfiles::app_map.end()) {
-            NanoProfiles::devAppInfo &appInfo = *dev->second;
+        auto dev = NanoProfiles::apps.find(appDevId);
+        if (dev != NanoProfiles::apps.end()) {
+            NanoProfiles::devAppInfo &appInfo = dev->second;
             uint16_t volume = incomingInfo["currentDetent"].as<uint16_t>();
             if (appInfo.volume != volume) {
                 appInfo.volume = volume;
-                if (appInfo.id == NanoProfiles::apps[lastApp].id) {
+                if (appInfo.id == NanoProfiles::keymapped_apps[lastApp]) {
                     foc_thread.put_new_position(volume);
                 }
             }
@@ -130,7 +130,7 @@ void ComThread::handleEvents() {
             else if (keyEvt.type == 1) { // AceButton::kEventReleased
                 eventDoc["ku"] = keyEvt.keyNum;
                 if (keyEvt.keyNum != lastApp) {
-                    NanoProfiles::devAppInfo &appInfo = NanoProfiles::apps[keyEvt.keyNum];
+                    NanoProfiles::devAppInfo &appInfo = GET_MAPPED_APP(keyEvt.keyNum);
                     LcdCommand cmd;
                     cmd.type = LCD_LAYOUT_DEFAULT;
                     cmd.title = &appInfo.title;
@@ -144,9 +144,9 @@ void ComThread::handleEvents() {
 
                     ledConfig current_led_config = HapticProfileManager::getInstance().getCurrentProfile()->led_config;
 
-                    current_led_config.primary_col = APP_DEV_WITH_DEFAULT(appInfo, ringPrimary);
-                    current_led_config.secondary_col = APP_DEV_WITH_DEFAULT(appInfo, ringSecondary);
-                    current_led_config.pointer_col = APP_DEV_WITH_DEFAULT(appInfo, ringPointer);
+                    current_led_config.primary_col = APP_DEV_COLOR_CONF(appInfo, ringPrimary);
+                    current_led_config.secondary_col = APP_DEV_COLOR_CONF(appInfo, ringSecondary);
+                    current_led_config.pointer_col = APP_DEV_COLOR_CONF(appInfo, ringPointer);
                     hmi_thread.put_led_config(current_led_config);
 
                     lastApp = keyEvt.keyNum;
@@ -159,15 +159,15 @@ void ComThread::handleEvents() {
     } while (hadEvent);
     do {
         AngleEvt angleEvt;
-        NanoProfiles::devAppInfo &appInfo = NanoProfiles::apps[lastApp];
+        NanoProfiles::devAppInfo &appInfo = GET_MAPPED_APP(lastApp);
         hadEvent = foc_thread.get_angle_event(&angleEvt);
         if (!hadEvent) continue;
         eventDoc.clear();
         eventDoc["type"] = "volume-update";
         eventDoc["absolute"] = angleEvt.cur_pos;
-        eventDoc["id"] = NanoProfiles::apps[lastApp].id;
+        eventDoc["id"] = appInfo.id;
         eventDoc["delta"] = (int16_t)(angleEvt.cur_pos - appInfo.volume);
-        NanoProfiles::apps[lastApp].volume = angleEvt.cur_pos;
+        appInfo.volume = angleEvt.cur_pos;
         serializeJson(eventDoc, Serial);
         Serial.println(); // add a newline
         ts_last_activity = millis();
@@ -360,13 +360,13 @@ void ComThread::setCurrentProfile(String name) {
 
 void ComThread::dispatchLedConfig() {
     ledConfig config;
-    config.button_A_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[0], keyColor);
-    config.button_B_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[1], keyColor);
-    config.button_C_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[2], keyColor);
-    config.button_D_col_idle = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[3], keyColor);
-    config.pointer_col = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[lastApp], ringPointer);
-    config.primary_col = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[lastApp], ringPrimary);
-    config.secondary_col = APP_DEV_WITH_DEFAULT(NanoProfiles::apps[lastApp], ringSecondary);
+    config.button_A_col_idle = APP_DEV_COLOR_CONF(GET_MAPPED_APP(0), keyColor);
+    config.button_B_col_idle = APP_DEV_COLOR_CONF(GET_MAPPED_APP(1), keyColor);
+    config.button_C_col_idle = APP_DEV_COLOR_CONF(GET_MAPPED_APP(2), keyColor);
+    config.button_D_col_idle = APP_DEV_COLOR_CONF(GET_MAPPED_APP(3), keyColor);
+    config.pointer_col = APP_DEV_COLOR_CONF(GET_MAPPED_APP(lastApp), ringPointer);
+    config.primary_col = APP_DEV_COLOR_CONF(GET_MAPPED_APP(lastApp), ringPrimary);
+    config.secondary_col = APP_DEV_COLOR_CONF(GET_MAPPED_APP(lastApp), ringSecondary);
     if (config.led_brightness > DeviceSettings::getInstance().ledMaxBrightness)
         config.led_brightness = DeviceSettings::getInstance().ledMaxBrightness;
     hmi_thread.put_led_config(config);
@@ -380,7 +380,7 @@ void ComThread::dispatchHapticConfig() {
     if (HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.num > 0) {
         HapticProfileUpdate haptic_config;
         haptic_config.profile = NanoProfiles::default_knob_value.haptic;
-        haptic_config.position = NanoProfiles::apps[lastApp].volume;
+        haptic_config.position = GET_MAPPED_APP(lastApp).volume;
         foc_thread.put_haptic_config(haptic_config);
     }
 };
@@ -419,7 +419,7 @@ String ComThread::generateDescription(HapticProfile &curr) {
 
 
 void ComThread::dispatchLcdConfig() {
-    NanoProfiles::devAppInfo &appInfo = NanoProfiles::apps[lastApp];
+    NanoProfiles::devAppInfo &appInfo = GET_MAPPED_APP(lastApp);
     LcdCommand cmd;
     cmd.type = LCD_LAYOUT_DEFAULT;
     cmd.title = &appInfo.title;

@@ -39,8 +39,8 @@ namespace NanoProfiles {
         .ringPointer=0xFFFFFF,
     };
 
-    devAppInfo apps[4] = {
-        {
+    std::map<String, devAppInfo> apps = {
+        { "spotify", {
             .type="application",
             .id="spotify",
             .title="Spotify",
@@ -51,8 +51,8 @@ namespace NanoProfiles {
             .ringPrimary=0x08596C,
             .ringSecondary=0x47040D,
             .ringPointer=APP_DEV_COLOR_NOT_DEFINED
-        },
-        {
+        } },
+        { "chrome", {
             .type="application",
             .id="chrome",
             .title="Chrome",
@@ -63,8 +63,8 @@ namespace NanoProfiles {
             .ringPrimary=0x1A2E52,
             .ringSecondary=0x200524,
             .ringPointer=APP_DEV_COLOR_NOT_DEFINED
-        },
-        {
+        } },
+        { "discord", {
             .type="application",
             .id="discord",
             .title="Discord",
@@ -75,8 +75,8 @@ namespace NanoProfiles {
             .ringPrimary=0x200524,
             .ringSecondary=0x1A2E52,
             .ringPointer=APP_DEV_COLOR_NOT_DEFINED
-        },
-        {
+        } },
+        { "speakers", {
             .type="output-device",
             .id="speakers",
             .title="Speakers",
@@ -87,13 +87,13 @@ namespace NanoProfiles {
             .ringPrimary=0x47040D,
             .ringSecondary=0x08596C,
             .ringPointer=APP_DEV_COLOR_NOT_DEFINED
-        }
+        } }
+    };
+    String keymapped_apps[4] = {
+        "spotify",
+        "chrome",
+        "discord",
+        "speakers"
     };
 
-    std::map<String, devAppInfo *> app_map = {
-        { "spotify", &(apps[0]) },
-        { "chrome", &(apps[1]) },
-        { "discord", &(apps[2]) },
-        { "speakers", &(apps[3]) }
-    };
 };

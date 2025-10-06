@@ -6,7 +6,8 @@
 
 #define APP_DEV_COLOR_NOT_DEFINED -1
 #define APP_DEV_IS_UNDEFINED(color) ((color) < 1)
-#define APP_DEV_WITH_DEFAULT(config_obj, config_name) ((uint32_t)(config_obj.config_name > -1 ? config_obj.config_name : NanoProfiles::defaultColorConfig.config_name))
+#define APP_DEV_COLOR_CONF(config_obj, config_name) ((uint32_t)(config_obj.config_name > -1 ? config_obj.config_name : NanoProfiles::defaultColorConfig.config_name))
+#define GET_MAPPED_APP(index) (NanoProfiles::apps[NanoProfiles::keymapped_apps[index]])
 
 namespace NanoProfiles
 {
@@ -42,6 +43,6 @@ namespace NanoProfiles
 
 
     extern keyColorConfig defaultColorConfig;
-    extern devAppInfo apps[];
-    extern std::map<String, devAppInfo *> app_map;
+    extern String keymapped_apps[];
+    extern std::map<String, devAppInfo> apps;
 };
