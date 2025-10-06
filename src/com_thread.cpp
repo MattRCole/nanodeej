@@ -98,7 +98,21 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
         if (dev != NanoProfiles::apps.end()) {
             NanoProfiles::devAppInfo &appInfo = dev->second;
             uint16_t volume = incomingInfo["currentDetent"].as<uint16_t>();
-            if (appInfo.volume != volume) {
+            uint16_t detentCount = incomingInfo["detents"].as<uint16_t>();
+            bool needNewPosition = appInfo.volume != volume;
+            bool needDetentUpdate = detentCount != appInfo.volumeMax;
+            if (needDetentUpdate) {
+                HapticProfileUpdate hapticConfig;
+                hapticConfig.position = volume; // might as well just set it to volume
+                hapticConfig.profile = NanoProfiles::default_knob_value.haptic;
+                hapticConfig.profile.end_pos = detentCount;
+
+                appInfo.volumeMax = detentCount;
+                appInfo.volume = volume; // might as well update this here too just in case it changed.
+
+                foc_thread.put_haptic_config(hapticConfig);
+            }
+            if (needNewPosition && !needDetentUpdate) { // Don't run this if we've already handled a detent update.
                 appInfo.volume = volume;
                 if (appInfo.id == NanoProfiles::keymapped_apps[lastApp]) {
                     foc_thread.put_new_position(volume);
