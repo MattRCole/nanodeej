@@ -97,10 +97,16 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
         auto dev = NanoProfiles::apps.find(appDevId);
         if (dev != NanoProfiles::apps.end()) {
             NanoProfiles::devAppInfo &appInfo = dev->second;
+
+            // Note: we're not doing a lot of error checking here.
+            // Maybe we want to put some checking in behind some pre-processor flags?
             uint16_t volume = incomingInfo["currentDetent"].as<uint16_t>();
             uint16_t detentCount = incomingInfo["detents"].as<uint16_t>();
+            String appDevName = incomingInfo["name"].as<String>();
             bool needNewPosition = appInfo.volume != volume;
             bool needDetentUpdate = detentCount != appInfo.volumeMax;
+            bool needNameChange = appDevName != appInfo.title;
+            bool changingCurrentlyDisplayedApp = appInfo.id == NanoProfiles::keymapped_apps[lastApp];
             if (needDetentUpdate) {
                 HapticProfileUpdate hapticConfig;
                 hapticConfig.position = volume; // might as well just set it to volume
@@ -114,9 +120,13 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
             }
             if (needNewPosition && !needDetentUpdate) { // Don't run this if we've already handled a detent update.
                 appInfo.volume = volume;
-                if (appInfo.id == NanoProfiles::keymapped_apps[lastApp]) {
+                if (changingCurrentlyDisplayedApp) {
                     foc_thread.put_new_position(volume);
                 }
+            }
+            if (needNameChange) {
+                appInfo.title = appDevName;
+                if (changingCurrentlyDisplayedApp) dispatchLcdConfig();
             }
         }
         else {
