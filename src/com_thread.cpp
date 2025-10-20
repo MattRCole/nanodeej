@@ -92,20 +92,26 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
     JsonArray appDevList = info.as<JsonArray>();
     for (JsonVariant v : appDevList) {
         JsonObject incomingInfo = v.as<JsonObject>();
+
+        uint16_t volume = incomingInfo["currentDetent"].as<uint16_t>();
+        uint16_t detentCount = incomingInfo["detents"].as<uint16_t>();
+        String appDevName = incomingInfo["name"].as<String>();
+        String appDevType = incomingInfo["type"].as<String>();
         String appDevId = incomingInfo["id"].as<String>();
-        // For now: we're not adding apps.
+
         auto dev = NanoProfiles::apps.find(appDevId);
         if (dev != NanoProfiles::apps.end()) {
             NanoProfiles::devAppInfo &appInfo = dev->second;
 
             // Note: we're not doing a lot of error checking here.
             // Maybe we want to put some checking in behind some pre-processor flags?
-            uint16_t volume = incomingInfo["currentDetent"].as<uint16_t>();
-            uint16_t detentCount = incomingInfo["detents"].as<uint16_t>();
-            String appDevName = incomingInfo["name"].as<String>();
             bool needNewPosition = appInfo.volume != volume;
             bool needDetentUpdate = detentCount != appInfo.volumeMax;
             bool needNameChange = appDevName != appInfo.title;
+            bool needTypeChange = appDevType != appInfo.type;
+            // bool needLedCleared = JSON_IS_NULL(incomingInfo["deejConfig"]);
+            // bool needLedUpdated = !needLedCleared && !incomingInfo["deejConfig"].isNull();
+
             bool changingCurrentlyDisplayedApp = appInfo.id == NanoProfiles::keymapped_apps[lastApp];
             if (needDetentUpdate) {
                 HapticProfileUpdate hapticConfig;
@@ -120,22 +126,57 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
             }
             if (needNewPosition && !needDetentUpdate) { // Don't run this if we've already handled a detent update.
                 appInfo.volume = volume;
-                if (changingCurrentlyDisplayedApp) {
-                    foc_thread.put_new_position(volume);
-                }
+
+                if (changingCurrentlyDisplayedApp) foc_thread.put_new_position(volume);
             }
-            if (needNameChange) {
-                appInfo.title = appDevName;
-                if (changingCurrentlyDisplayedApp) dispatchLcdConfig();
-            }
+
+            if (needNameChange) appInfo.title = appDevName;
+            if (needTypeChange) appInfo.type = appDevType;
+            if ((needNameChange || needTypeChange) && changingCurrentlyDisplayedApp) dispatchLcdConfig();
+
         }
         else {
-            String devInfo;
-            serializeJson(incomingInfo, devInfo);
-            Serial.printf("{\"type\":\"debug\",\"msg\":\"Adding new app/devs is not yet supported.\",\"device-info\":%s}\n", devInfo.c_str());
+            NanoProfiles::apps[appDevId] = {
+                .type = appDevType,
+                .id = appDevId,
+                .title = appDevName,
+                .volume = volume,
+                .volumeMax = detentCount,
+                .mappedKey = -1,
+                
+                // TODO: Handle color support in general
+                .keyColor = APP_DEV_COLOR_NOT_DEFINED,
+                .ringPrimary = APP_DEV_COLOR_NOT_DEFINED,
+                .ringSecondary = APP_DEV_COLOR_NOT_DEFINED,
+                .ringPointer = APP_DEV_COLOR_NOT_DEFINED
+            };
         }
     }
 };
+
+
+void ComThread::handleAppDevKeyMappingCommand(JsonVariant info) {
+    size_t keyIdx = 0;
+    String currentlyDisplayedId = NanoProfiles::keymapped_apps[lastApp];
+    JsonArray appDevIds = info.as<JsonArray>();
+    bool anyChange = false;
+    for (JsonVariant v : appDevIds) {
+        if (keyIdx > 3) break; // TODO: There's gotta be a pre-defined max keys somewhere 
+
+        String appId = v.as<String>();
+        String prevId = NanoProfiles::keymapped_apps[keyIdx];
+        NanoProfiles::keymapped_apps[keyIdx] = appId;
+
+        // If there's any change, we'll re-do the LED config
+        if (appId != prevId) anyChange = true;
+
+        keyIdx++;
+    }
+    if (currentlyDisplayedId != NanoProfiles::keymapped_apps[lastApp]) dispatchLcdConfig();
+    if (anyChange) dispatchLedConfig();
+};
+
+// void ComThread:: // TODO: Add a function for swapping the currently displayed app.
 
 void ComThread::handleEvents() {
     JsonDocument eventDoc;
@@ -331,16 +372,12 @@ void ComThread::handleProfilesCommand(JsonVariant p) {
 };
 
 
-
-
 bool ComThread::isProfileNameOk(String &name) {
     if (name == nullptr) return false;
     if (name.length() < 1 || name.length() > 20) return false;
     // TODO check for invalid characters
     return true;
 };
-
-
 
 
 void ComThread::sendError(String &error, String *msg) {

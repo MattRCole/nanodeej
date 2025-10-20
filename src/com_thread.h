@@ -46,6 +46,7 @@ class ComThread : public Thread<ComThread> {
         void handleSettingsCommand(JsonVariant s);
         void handleProfilesCommand(JsonVariant p);
         void handleAppDevConfigCommand(JsonVariant info);
+        void handleAppDevKeyMappingCommand(JsonVariant info);
         void handleMessages();
         void handleEvents();
 
