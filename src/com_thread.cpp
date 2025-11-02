@@ -219,8 +219,6 @@ void ComThread::handleAppDevKeyMappingCommand(JsonVariant info) {
     if (anyChange) dispatchLedConfig();
 };
 
-// void ComThread:: // TODO: Add a function for swapping the currently displayed app.
-
 void ComThread::handleEvents() {
     JsonDocument eventDoc;
     bool hadEvent = false;
@@ -282,29 +280,7 @@ void ComThread::handleEvents() {
     } while (hadEvent);
 };
 
-
-
-
-
-void ComThread::handleSettingsCommand(JsonVariant s) {
-    if (s.isNull()) return;
-    if (s.is<String>()) {
-        // send the settings
-        JsonDocument doc;
-        JsonObject obj = doc["settings"].to<JsonObject>();
-        DeviceSettings::getInstance().toJSON(obj);
-        serializeJson(doc, Serial);
-        Serial.println(); // add a newline
-    }
-    if (s.is<JsonObject>()) {
-        JsonObject obj = s.as<JsonObject>();
-        DeviceSettings::getInstance() = obj;
-        dispatchSettings();
-    }
-};
-
-
-
+// TODO: Remove this and related hmi code.
 void ComThread::handleMessages() {
     StringMessage incoming;
     JsonDocument doc;
@@ -370,58 +346,6 @@ void ComThread::handleMessages() {
         }
     }
 };
-
-
-void ComThread::handleProfilesCommand(JsonVariant p) {
-    if (p.isNull()) return;
-    HapticProfileManager &pm = HapticProfileManager::getInstance();
-    if (p.is<String>()) {
-        String s = p.as<String>();
-        if (s == "#all") {
-            // send the list of all profile names
-            JsonDocument doc;
-            JsonArray arr = doc["profiles"].to<JsonArray>();
-            for (int i = 0; i < pm.size(); i++) {
-                arr.add(pm[i]->profile_name);
-            }
-            doc["current"] = pm.getCurrentProfile()->profile_name;
-            serializeJson(doc, Serial);
-            Serial.println(); // add a newline
-        }
-    }
-    if (p.is<JsonArray>()) {
-        JsonArray arr = p.as<JsonArray>();
-        for (int i = 0; i < MAX_PROFILES; i++) {
-            HapticProfile *p = pm[i];
-            if (p != nullptr) {
-                bool found = false;
-                for (int i = 0; i < arr.size(); i++) {
-                    if (arr[i].is<String>()) {
-                        String s = arr[i].as<String>();
-                        if (s == p->profile_name) {
-                            found = true;
-                            break;
-                        }
-                    }
-                }
-                if (!found) {
-                    Serial.println("{\"type\":\"debug\",\"msg\":\"Deleting profile " + p->profile_name + "\"}");
-                    pm.remove(p->profile_name);
-                }
-            }
-        }
-    }
-    // TODO reorder profiles
-};
-
-
-bool ComThread::isProfileNameOk(String &name) {
-    if (name == nullptr) return false;
-    if (name.length() < 1 || name.length() > 20) return false;
-    // TODO check for invalid characters
-    return true;
-};
-
 
 void ComThread::sendError(String &error, String *msg) {
     JsonDocument doc;
@@ -496,30 +420,6 @@ void ComThread::dispatchSettings() {
     hmi_thread.put_settings(hmiSettings);
     global_idle_timeout = ds.idleTimeout;
 };
-
-String autoDescription = "";
-
-String ComThread::generateDescription(HapticProfile &curr) {
-    String desc = "";
-    if (curr.hmi_config.knob.num > 0) {
-        switch (curr.hmi_config.knob.values[0].type) {
-        case knobValueType::KV_ACTIONS:
-            desc = "Actions";
-            break;
-        case knobValueType::KV_DEVICE_PROFILES:
-            desc = "Profiles";
-            break;
-        default:
-            desc = "?";
-            break;
-        }
-    }
-    else {
-        desc = "No Mapping";
-    }
-    return desc;
-};
-
 
 void ComThread::dispatchLcdConfig() {
     NanoProfiles::devAppInfo &appInfo = GET_MAPPED_APP(lastApp);

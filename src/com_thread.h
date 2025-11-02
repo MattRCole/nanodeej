@@ -36,7 +36,6 @@ class ComThread : public Thread<ComThread> {
 
         void setCurrentProfile(String name);
         void put_string_message(const StringMessage& msg);
-        bool isProfileNameOk(String& name);
         
         bool global_sleep_flag = false;
         unsigned long ts_last_activity;
@@ -46,8 +45,6 @@ class ComThread : public Thread<ComThread> {
     protected:
         void run();
         void handleProfileCommand(JsonVariant profile, JsonVariant updates);
-        void handleSettingsCommand(JsonVariant s);
-        void handleProfilesCommand(JsonVariant p);
         void handleAppDevConfigCommand(JsonVariant info);
         void handleAppDevKeyMappingCommand(JsonVariant info);
         void handleMessages();
@@ -59,8 +56,6 @@ class ComThread : public Thread<ComThread> {
         void dispatchSettings();
         void dispatchLcdConfig();
         int32_t cssColorToInt(String color);
-
-        String generateDescription(HapticProfile& curr);
 
         void sendError(String& error, String* msg = nullptr);
         void sendError(String& error, String& msg);
