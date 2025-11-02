@@ -11,7 +11,6 @@
 
 
 
-
 ComThread::ComThread(const uint8_t task_core) : Thread("COM", 12000, 1, task_core) {
     _q_strings_in = xQueueCreate(5, sizeof(StringMessage));
 };
@@ -59,8 +58,12 @@ void ComThread::run() {
                 sendError("JSON parse error", error.c_str());
                 continue;
             }
-            if (doc["type"].as<String>() == "app-dev-config") {
+            String messageType = doc["type"].as<String>();
+            if (messageType == "app-dev-config") {
                 handleAppDevConfigCommand(doc["info"]);
+            }
+            else if (messageType == "app-dev-key-mapping") {
+                handleAppDevKeyMappingCommand(doc["info"]);
             }
             ts_last_activity = millis();
         }
@@ -109,8 +112,8 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
             bool needDetentUpdate = detentCount != appInfo.volumeMax;
             bool needNameChange = appDevName != appInfo.title;
             bool needTypeChange = appDevType != appInfo.type;
-            // bool needLedCleared = JSON_IS_NULL(incomingInfo["deejConfig"]);
-            // bool needLedUpdated = !needLedCleared && !incomingInfo["deejConfig"].isNull();
+            bool needLedConfigCleared = JSON_IS_NULL(incomingInfo["deejConfig"]);
+            bool needLedConfigUpdated = !needLedConfigCleared && !incomingInfo["deejConfig"].isNull();
 
             bool changingCurrentlyDisplayedApp = appInfo.id == NanoProfiles::keymapped_apps[lastApp];
             if (needDetentUpdate) {
@@ -132,24 +135,61 @@ void ComThread::handleAppDevConfigCommand(JsonVariant info)
 
             if (needNameChange) appInfo.title = appDevName;
             if (needTypeChange) appInfo.type = appDevType;
+            if (needLedConfigCleared) {
+                appInfo.keyColor = APP_DEV_COLOR_NOT_DEFINED;
+                appInfo.ringPrimary = APP_DEV_COLOR_NOT_DEFINED;
+                appInfo.ringSecondary = APP_DEV_COLOR_NOT_DEFINED;
+                appInfo.ringPointer = APP_DEV_COLOR_NOT_DEFINED;
+            }
+            if (needLedConfigUpdated) {
+                JsonObject ledConfig = incomingInfo["deejConfig"].as<JsonObject>();
+                // TL;DR if the value is explicitly `null`, reset to undefined
+                // otherwise, set the new value if present
+                // otherwise, keep existing value
+                appInfo.keyColor = JSON_IS_NULL(ledConfig["keyColor"]) ? APP_DEV_COLOR_NOT_DEFINED : JSON_COLOR_DEFAULT_TO_EXISTING(ledConfig["keyColor"], appInfo.keyColor);
+                appInfo.ringPrimary = JSON_IS_NULL(ledConfig["ringPrimary"]) ? APP_DEV_COLOR_NOT_DEFINED : JSON_COLOR_DEFAULT_TO_EXISTING(ledConfig["ringPrimary"], appInfo.ringPrimary);
+                appInfo.ringSecondary = JSON_IS_NULL(ledConfig["ringSecondary"]) ? APP_DEV_COLOR_NOT_DEFINED : JSON_COLOR_DEFAULT_TO_EXISTING(ledConfig["ringSecondary"], appInfo.ringSecondary);
+                appInfo.ringPointer = JSON_IS_NULL(ledConfig["ringPointer"]) ? APP_DEV_COLOR_NOT_DEFINED : JSON_COLOR_DEFAULT_TO_EXISTING(ledConfig["ringPointer"], appInfo.ringPointer);
+            }
+
             if ((needNameChange || needTypeChange) && changingCurrentlyDisplayedApp) dispatchLcdConfig();
+            if (needLedConfigCleared || needLedConfigUpdated) dispatchLedConfig();
+
+
 
         }
         else {
-            NanoProfiles::apps[appDevId] = {
-                .type = appDevType,
-                .id = appDevId,
-                .title = appDevName,
-                .volume = volume,
-                .volumeMax = detentCount,
-                .mappedKey = -1,
-                
-                // TODO: Handle color support in general
-                .keyColor = APP_DEV_COLOR_NOT_DEFINED,
-                .ringPrimary = APP_DEV_COLOR_NOT_DEFINED,
-                .ringSecondary = APP_DEV_COLOR_NOT_DEFINED,
-                .ringPointer = APP_DEV_COLOR_NOT_DEFINED
-            };
+            bool useDefaultLEDConfig = JSON_IS_NULL(incomingInfo["deejConfig"]);
+            if (useDefaultLEDConfig) {
+                NanoProfiles::apps[appDevId] = {
+                    .type = appDevType,
+                    .id = appDevId,
+                    .title = appDevName,
+                    .volume = volume,
+                    .volumeMax = detentCount,
+                    .mappedKey = -1,
+                    .keyColor = APP_DEV_COLOR_NOT_DEFINED,
+                    .ringPrimary = APP_DEV_COLOR_NOT_DEFINED,
+                    .ringSecondary = APP_DEV_COLOR_NOT_DEFINED,
+                    .ringPointer = APP_DEV_COLOR_NOT_DEFINED
+                };
+            }
+            else {
+                JsonObject ledConfig = incomingInfo["deejConfig"].as<JsonObject>();
+
+                NanoProfiles::apps[appDevId] = {
+                    .type = appDevType,
+                    .id = appDevId,
+                    .title = appDevName,
+                    .volume = volume,
+                    .volumeMax = detentCount,
+                    .mappedKey = -1,
+                    .keyColor = JSON_COLOR_DEFAULT_TO_UNDEF(ledConfig["keyColor"]),
+                    .ringPrimary = JSON_COLOR_DEFAULT_TO_UNDEF(ledConfig["ringPrimary"]),
+                    .ringSecondary = JSON_COLOR_DEFAULT_TO_UNDEF(ledConfig["ringSecondary"]),
+                    .ringPointer = JSON_COLOR_DEFAULT_TO_UNDEF(ledConfig["ringPointer "])
+                };
+            }
         }
     }
 };
@@ -172,7 +212,10 @@ void ComThread::handleAppDevKeyMappingCommand(JsonVariant info) {
 
         keyIdx++;
     }
-    if (currentlyDisplayedId != NanoProfiles::keymapped_apps[lastApp]) dispatchLcdConfig();
+    if (currentlyDisplayedId != NanoProfiles::keymapped_apps[lastApp]) {
+        dispatchLcdConfig();
+        dispatchHapticConfig(); // Updates volume and endpos if necessary
+    }
     if (anyChange) dispatchLedConfig();
 };
 
@@ -438,12 +481,11 @@ void ComThread::dispatchHmiConfig() {
 };
 
 void ComThread::dispatchHapticConfig() {
-    if (HapticProfileManager::getInstance().getCurrentProfile()->hmi_config.knob.num > 0) {
-        HapticProfileUpdate haptic_config;
-        haptic_config.profile = NanoProfiles::default_knob_value.haptic;
-        haptic_config.position = GET_MAPPED_APP(lastApp).volume;
-        foc_thread.put_haptic_config(haptic_config);
-    }
+    HapticProfileUpdate haptic_config;
+    haptic_config.profile = NanoProfiles::default_knob_value.haptic;
+    haptic_config.profile.end_pos = GET_MAPPED_APP(lastApp).volumeMax;
+    haptic_config.position = GET_MAPPED_APP(lastApp).volume;
+    foc_thread.put_haptic_config(haptic_config);
 };
 
 void ComThread::dispatchSettings() {
@@ -489,4 +531,57 @@ void ComThread::dispatchLcdConfig() {
     cmd.data3 = nullptr;
     cmd.data4 = nullptr;
     lcd_thread.put_lcd_command(cmd);
+};
+
+
+int32_t ComThread::cssColorToInt(String color) {
+    if (color.length() < 4
+    || color.length() == 6
+    || color.length() == 8
+    || color.length() > 9) {
+        // Invalid length
+        return APP_DEV_COLOR_NOT_DEFINED;
+    }
+
+    if (color.charAt(0) != '#') {
+        // kinda draconian but... idk we only support hex encoded colors
+        return APP_DEV_COLOR_NOT_DEFINED;
+    }
+
+
+    int32_t *hexMode = (int32_t *)malloc(sizeof(int32_t) * color.length() - 1);
+
+    bool validColor = true;
+    for(size_t i = 0; i < (color.length() - 1); i++) {
+        char encoded = color.charAt(i + 1);
+        if (encoded >= '0' && encoded <= '9') {
+            hexMode[i] = 0x0F & encoded;
+        }
+        else {
+            int32_t translated = (0x0F & encoded) + 0b1001;
+            if (translated > 0x0F) {
+                validColor = false;
+                break;
+            }
+            hexMode[i] = translated;
+        }
+    }
+    if (validColor == false) {
+        free(hexMode);
+        return APP_DEV_COLOR_NOT_DEFINED;
+    }
+
+    int32_t result = APP_DEV_COLOR_NOT_DEFINED;
+
+    if (color.length() == 4 || color.length() == 5) {
+        // If using RGBA, we ignore the A.
+        result = (hexMode[0] << 20) | (hexMode[0] << 16) | (hexMode[1] << 12) | (hexMode[1] << 8) | (hexMode[2] << 4) | hexMode[2];
+    }
+    // Logically, these are the only remaining options but...
+    else if (color.length() == 7 || color.length() == 9) {
+        // If it's 9, we ignore the alpha segment
+        result = (hexMode[0] << 20) | (hexMode[1] << 16) | (hexMode[2] << 12) | (hexMode[3] << 8) | (hexMode[4] << 4) | hexMode[5];
+    }
+    free(hexMode);
+    return result;
 };

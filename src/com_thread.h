@@ -7,6 +7,9 @@
 #include "HapticProfileManager.h"
 
 
+#define JSON_COLOR_DEFAULT_TO_UNDEF(json_variant) (json_variant.isNull() ? APP_DEV_COLOR_NOT_DEFINED : cssColorToInt(json_variant.as<String>()))
+#define JSON_COLOR_DEFAULT_TO_EXISTING(json_variant, existing_color) (json_variant.isNull() ? existing_color : cssColorToInt(json_variant.as<String>()))
+
 enum StringMessageType {
     STRING_MESSAGE_DEBUG,
     STRING_MESSAGE_ERROR,
@@ -55,6 +58,7 @@ class ComThread : public Thread<ComThread> {
         void dispatchHmiConfig();
         void dispatchSettings();
         void dispatchLcdConfig();
+        int32_t cssColorToInt(String color);
 
         String generateDescription(HapticProfile& curr);
 
